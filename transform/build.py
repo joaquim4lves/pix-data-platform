@@ -12,9 +12,18 @@ from pathlib import Path
 
 import duckdb
 import pyarrow as pa
+from cdc.tables import APP_TABLES, AppTable
 from ingestion.bcb.entities import CHAVES, MUNICIPIO, TRANSACOES, EntitySpec
 
-from transform.sources import LocalRaw, RawLocation, S3Raw, parquet_glob, s3_statements, sql_literal
+from transform.sources import (
+    LocalRaw,
+    RawLocation,
+    S3Raw,
+    app_parquet_glob,
+    parquet_glob,
+    s3_statements,
+    sql_literal,
+)
 
 SQL_DIR = Path(__file__).resolve().parent / "sql"
 
@@ -47,6 +56,7 @@ def build_warehouse(database: Path, location: RawLocation) -> None:
         for schema in SCHEMAS:
             con.execute(f"CREATE SCHEMA {schema}")
         _create_raw_views(con, location)
+        _create_app_views(con, location)
         for layer, kind in LAYERS:
             _apply_layer(con, layer, kind)
     finally:
@@ -74,6 +84,38 @@ def _raw_select(con: duckdb.DuckDBPyConnection, location: RawLocation, spec: Ent
             return _empty_select(spec.schema)
         raise
     return scan
+
+
+def _create_app_views(con: duckdb.DuckDBPyConnection, location: RawLocation) -> None:
+    for spec in APP_TABLES.values():
+        select = _app_select(con, location, spec)
+        _execute(
+            con,
+            f"CREATE OR REPLACE VIEW raw.app_{spec.name} AS\n{select}",
+            label=f"raw.app_{spec.name}",
+        )
+
+
+def _app_select(con: duckdb.DuckDBPyConnection, location: RawLocation, spec: AppTable) -> str:
+    glob = app_parquet_glob(location, spec.name)
+    scan = f"SELECT * FROM read_parquet({sql_literal(glob)}, hive_partitioning=true)"
+    if isinstance(location, LocalRaw):
+        folder = location.root / "app" / spec.name
+        if not any(folder.glob("dt=*/*.parquet")):
+            return _empty_app_select(spec)
+        return scan
+    try:
+        con.execute(scan + " LIMIT 0")
+    except duckdb.Error as exc:
+        if "No files found" in str(exc):
+            return _empty_app_select(spec)
+        raise
+    return scan
+
+
+def _empty_app_select(spec: AppTable) -> str:
+    columns = ", ".join(f"CAST(NULL AS VARCHAR) AS {_quote(name)}" for name in spec.parquet_columns)
+    return f"SELECT {columns} WHERE FALSE"
 
 
 def _empty_select(schema: pa.Schema) -> str:
