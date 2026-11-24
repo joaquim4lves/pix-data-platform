@@ -1,4 +1,7 @@
-.PHONY: up down test lint ingest backfill ensure-bucket model dq migrate api load cdc apply e2e tf-check
+.PHONY: up down test lint ingest backfill ensure-bucket model dq migrate api load cdc apply e2e tf-check dbt-deps dbt-build dbt-docs
+
+DBT_PROJECT := transform/dbt
+DBT := $(PY) -m transform.dbt_main --project-dir $(DBT_PROJECT) --profiles-dir $(DBT_PROJECT)
 
 PYTHON ?= python3
 VENV := .venv
@@ -41,6 +44,15 @@ model:
 
 dq:
 	$(PY) -m transform dq
+
+dbt-deps:
+	$(DBT) deps
+
+dbt-build:
+	$(DBT) build
+
+dbt-docs:
+	$(DBT) docs generate
 
 migrate:
 	$(PY) -m payments migrate

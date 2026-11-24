@@ -1,0 +1,43 @@
+name: dbt-docs
+
+# Manual. A push to main does not publish, so a repository without GitHub
+# Pages stays green. Enable Pages with "GitHub Actions" as the source, then
+# run this workflow.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: dbt-docs
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Fixture Parquet
+        run: |
+          python -c "from pathlib import Path; from tests.pix_warehouse import write_sample_raw; write_sample_raw(Path('data/raw'))"
+      - name: Generate
+        run: |
+          make dbt-deps
+          make dbt-build
+          make dbt-docs
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: transform/dbt/target
+      - id: deploy
+        uses: actions/deploy-pages@v5

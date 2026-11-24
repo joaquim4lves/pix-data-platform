@@ -1,17 +1,20 @@
-"""``python -m transform build`` and ``python -m transform dq``."""
+"""``python -m transform build`` and ``python -m transform dq``.
+
+Both commands delegate to dbt. ``build`` seeds and runs the models.
+``dq`` runs ``dbt test``. The legacy SQL runner remains importable for the
+parity test; it is not what ``make model`` calls.
+"""
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
 import duckdb
-
-from transform.build import build_warehouse
-from transform.checks import run_checks
-from transform.sources import location_from_env
 
 FACTS = (
     "fct_transacoes_mensal",
@@ -22,46 +25,76 @@ FACTS = (
     "cur_pix_dispute",
 )
 
+_PROJECT = Path(__file__).resolve().parent / "dbt"
+
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     database = Path(os.environ.get("PIX_DUCKDB_PATH", "data/pix.duckdb"))
     if args.command == "build":
         return _build(database)
-    return _dq(database)
+    return _dq()
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="transform")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("build", help="build the local DuckDB warehouse from raw Parquet")
-    sub.add_parser("dq", help="run data-quality checks against the warehouse")
+    sub.add_parser("build", help="build the local DuckDB warehouse with dbt")
+    sub.add_parser("dq", help="run dbt tests against the warehouse")
     return parser
 
 
+def dbt_command(args: list[str]) -> list[str]:
+    return [
+        sys.executable,
+        "-m",
+        "transform.dbt_main",
+        *args,
+        "--project-dir",
+        str(_PROJECT),
+        "--profiles-dir",
+        str(_PROJECT),
+    ]
+
+
+def run_dbt(args: list[str]) -> int:
+    completed = subprocess.run(dbt_command(args))
+    return completed.returncode
+
+
 def _build(database: Path) -> int:
+    if run_dbt(["seed"]) != 0:
+        return 1
+    if run_dbt(["run"]) != 0:
+        return 1
     try:
-        location = location_from_env()
-        build_warehouse(database, location)
-    except (RuntimeError, duckdb.Error, ValueError, OSError) as exc:
+        _print_summary(database)
+    except (duckdb.Error, OSError) as exc:
         print(exc, file=sys.stderr)
         return 1
-    _print_summary(database)
     return 0
 
 
-def _dq(database: Path) -> int:
-    try:
-        results = run_checks(database)
-    except (RuntimeError, duckdb.Error, FileNotFoundError) as exc:
-        print(exc, file=sys.stderr)
-        return 1
-    failed = False
-    for item in results:
-        status = "ok" if item.ok else "failed"
-        print(f"{item.name} {status} violations={item.violations}")
-        failed = failed or not item.ok
-    return 1 if failed else 0
+def _dq() -> int:
+    code = run_dbt(["test"])
+    _print_tests()
+    return code
+
+
+def _print_tests() -> None:
+    path = _PROJECT / "target" / "run_results.json"
+    if not path.exists():
+        return
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    for result in payload.get("results", []):
+        unique_id = str(result.get("unique_id", ""))
+        if not unique_id.startswith("test."):
+            continue
+        name = unique_id.rsplit(".", 1)[-1]
+        failures = result.get("failures")
+        violations = 0 if failures is None else int(failures)
+        status = "ok" if result.get("status") == "pass" and violations == 0 else "failed"
+        print(f"{name} {status} violations={violations}")
 
 
 def _print_summary(database: Path) -> None:

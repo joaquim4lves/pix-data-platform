@@ -28,8 +28,8 @@ jobs:
       POSTGRES_PASSWORD: pix
       POSTGRES_DB: pix
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install
@@ -38,22 +38,33 @@ jobs:
         run: make lint
       - name: Test
         run: make test
+      - name: dbt build
+        run: |
+          python -c "from pathlib import Path; from tests.pix_warehouse import write_sample_raw; write_sample_raw(Path('data/raw'))"
+          make dbt-deps
+          make dbt-build
 
   terraform:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@v5
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.10.5"
-      - uses: terraform-linters/setup-tflint@v4
+      - uses: terraform-linters/setup-tflint@v6
         with:
           tflint_version: "v0.54.0"
+      - uses: actions/cache@v5
+        with:
+          path: ~/.tflint.d/plugins
+          key: tflint-plugins-${{ hashFiles('infra/terraform/.tflint.hcl') }}
       - name: tflint init
-        run: tflint --init
         working-directory: infra/terraform
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tflint --init
       - name: Format
         run: terraform fmt -check -recursive -diff infra/terraform
       - name: Validate bootstrap
@@ -69,7 +80,7 @@ jobs:
       - name: tflint
         working-directory: infra/terraform
         run: tflint --recursive --config "${PWD}/.tflint.hcl"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: checkov

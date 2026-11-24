@@ -1,0 +1,24 @@
+version: 2
+
+exposures:
+  - name: pix_metabase
+    type: dashboard
+    maturity: low
+    url: https://metabase.invalid/dashboard/pix
+    description: >
+      Placeholder for the v1.0 Metabase dashboard. It reads the marts through
+      Athena in the deployed account and through DuckDB locally. The dashboard
+      is not installed in this slice. The URL is a stand-in, not a host.
+    depends_on:
+      - ref('fct_transacoes_mensal')
+      - ref('fct_transacoes_municipio')
+      - ref('fct_chaves_pix')
+      - ref('dim_tempo')
+      - ref('dim_municipio')
+      - ref('dim_instituicao')
+      - ref('cur_pix_key')
+      - ref('cur_pix_transaction')
+      - ref('cur_pix_dispute')
+    owner:
+      name: Joaquim Alves
+      email: jafn92@gmail.com

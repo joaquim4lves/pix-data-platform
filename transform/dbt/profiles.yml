@@ -1,0 +1,26 @@
+# Committed on purpose: every value is an environment variable or a public
+# default. There are no keys in this file. CI uses the duckdb target.
+# The athena target is the v0.4 workgroup and is not invoked in CI.
+pix_data_platform:
+  target: duckdb
+  outputs:
+    duckdb:
+      type: duckdb
+      path: "{{ env_var('PIX_DUCKDB_PATH', 'data/pix.duckdb') }}"
+      threads: 1
+      plugins:
+        - module: transform.dbt_raw
+    athena:
+      type: athena
+      region_name: "{{ env_var('AWS_REGION', env_var('AWS_DEFAULT_REGION', 'us-east-1')) }}"
+      database: awsdatacatalog
+      schema: marts
+      # Terraform name is ${name_prefix}-${environment}. The dev default is pix-data-dev.
+      work_group: "{{ env_var('PIX_ATHENA_WORKGROUP', 'pix-data-dev') }}"
+      s3_staging_dir: "{{ env_var('PIX_ATHENA_STAGING_DIR', 's3://pix-athena-results/athena-results/') }}"
+      s3_data_dir: "{{ env_var('PIX_ATHENA_DATA_DIR', 's3://pix-curated/curated/') }}"
+      s3_data_naming: schema_table_unique
+      num_retries: 1
+      # Parse and compile must not call Glue. A real build checks the workgroup.
+      skip_workgroup_check: true
+      threads: 1

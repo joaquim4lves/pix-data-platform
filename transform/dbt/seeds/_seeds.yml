@@ -1,0 +1,290 @@
+version: 2
+seeds:
+- name: seed_natureza
+  description: >-
+    Nine NATUREZA codes. P2P, P2B, B2P, and B2B follow the SPI 2025 footnote. P2G is named in the Pix
+    Gestao report. The other four use the same payer-to-receiver convention and are flagged publicado
+    false.
+  config:
+    column_types:
+      codigo: varchar
+      rotulo: varchar
+      descricao: varchar
+      publicado: boolean
+      fonte: varchar
+  columns:
+  - name: codigo
+    description: Raw NATUREZA code.
+    tests:
+    - unique
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - P2P
+          - P2B
+          - B2P
+          - B2B
+          - P2G
+          - G2P
+          - B2G
+          - G2B
+          - G2G
+  - name: rotulo
+    description: Display label. Published gloss, or the convention label when publicado is false.
+    tests:
+    - not_null
+  - name: descricao
+    description: Payer and receiver in words.
+    tests:
+    - not_null
+  - name: publicado
+    description: True when a BCB report names this code. False when the label is the P/B/G convention.
+    tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - true
+          - false
+          quote: false
+  - name: fonte
+    description: Where the label comes from.
+    tests:
+    - not_null
+- name: seed_uf
+  description: >-
+    IBGE state codes and the five macro-regions. uf_ibge 0 is the PIX Nao informado sentinel. IBGE does
+    not assign 0.
+  config:
+    column_types:
+      uf_ibge: integer
+      sigla: varchar
+      nome: varchar
+      sigla_regiao: varchar
+      regiao_nome: varchar
+  columns:
+  - name: uf_ibge
+    description: IBGE state code, or 0 for the unpublished sentinel.
+    tests:
+    - unique
+    - not_null
+  - name: sigla
+    description: Two-letter state abbreviation. Null for uf_ibge 0.
+  - name: nome
+    description: State name, or Nao informado for code 0.
+    tests:
+    - not_null
+  - name: sigla_regiao
+    description: Macro-region abbreviation (N, NE, SE, S, CO). Null for code 0.
+  - name: regiao_nome
+    description: Macro-region name.
+    tests:
+    - not_null
+- name: seed_tipo_pessoa
+  description: Pessoa fisica and pessoa juridica, the PAG_PFPJ, REC_PFPJ, and NaturezaUsuario values.
+  config:
+    column_types:
+      codigo: varchar
+      rotulo: varchar
+      fonte: varchar
+  columns:
+  - name: codigo
+    description: PF or PJ.
+    tests:
+    - unique
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - PF
+          - PJ
+  - name: rotulo
+    description: Pessoa fisica or pessoa juridica.
+    tests:
+    - not_null
+  - name: fonte
+    description: Olinda text.
+    tests:
+    - not_null
+- name: seed_faixa_idade
+  description: >-
+    Age-band strings published by Olinda. ordem is chart order, youngest first, with the two non-age values
+    last.
+  config:
+    column_types:
+      codigo: varchar
+      rotulo: varchar
+      ordem: integer
+      fonte: varchar
+  columns:
+  - name: codigo
+    description: Age band as Olinda spells it.
+    tests:
+    - unique
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - até 19 anos
+          - entre 20 e 29 anos
+          - entre 30 e 39 anos
+          - entre 40 e 49 anos
+          - entre 50 e 59 anos
+          - mais de 60 anos
+          - Nao se aplica
+          - Nao informado
+  - name: rotulo
+    description: Same text as codigo for the published bands.
+    tests:
+    - not_null
+  - name: ordem
+    description: Chart order, 1 through 8.
+    tests:
+    - not_null
+  - name: fonte
+    description: Olinda text.
+    tests:
+    - not_null
+- name: seed_finalidade
+  description: FINALIDADE values published by Olinda. Only Nao disponivel is accented in the label.
+  config:
+    column_types:
+      codigo: varchar
+      rotulo: varchar
+      fonte: varchar
+  columns:
+  - name: codigo
+    description: Finalidade code or the API text.
+    tests:
+    - unique
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - Pix
+          - Pix Saque
+          - Pix Troco
+          - Nao disponivel
+  - name: rotulo
+    description: Display label.
+    tests:
+    - not_null
+  - name: fonte
+    description: Olinda text.
+    tests:
+    - not_null
+- name: seed_forma_iniciacao
+  description: >-
+    FORMAINICIACAO codes. DICT, MANU, INIC, QRES, QRDN, and AUTO are Manual de Iniciacao 2.10.0 section
+    3.2. APDN is the Forum Pix domain. APES is inferred and publicado is false.
+  config:
+    column_types:
+      codigo: varchar
+      rotulo: varchar
+      publicado: boolean
+      fonte: varchar
+  columns:
+  - name: codigo
+    description: Initiation-form code.
+    tests:
+    - unique
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - DICT
+          - MANU
+          - INIC
+          - QRES
+          - QRDN
+          - AUTO
+          - APDN
+          - APES
+          - Nao disponivel
+  - name: rotulo
+    description: Display label.
+    tests:
+    - not_null
+  - name: publicado
+    description: False only for APES, whose gloss is inferred from the QRES/QRDN pair.
+    tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - true
+          - false
+          quote: false
+  - name: fonte
+    description: Manual, Forum Pix, Olinda text, or the inferred pair.
+    tests:
+    - not_null
+- name: seed_regiao
+  description: Macro-regions as EstatisticasTransacoesPix spells them, plus Nao informado.
+  config:
+    column_types:
+      codigo: varchar
+      rotulo: varchar
+      sigla: varchar
+      fonte: varchar
+  columns:
+  - name: codigo
+    description: Region string on the national extract.
+    tests:
+    - unique
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - NORTE
+          - NORDESTE
+          - SUDESTE
+          - SUL
+          - CENTRO-OESTE
+          - Nao informado
+  - name: rotulo
+    description: Display name.
+    tests:
+    - not_null
+  - name: sigla
+    description: Abbreviation matching the municipality extract. Null for Nao informado.
+  - name: fonte
+    description: IBGE or Olinda text.
+    tests:
+    - not_null
+- name: seed_tipo_chave
+  description: >-
+    TipoChave values in the ChavesPix snapshot. ordem is a stable chart order, not a volume ranking.
+  config:
+    column_types:
+      codigo: varchar
+      rotulo: varchar
+      ordem: integer
+      fonte: varchar
+  columns:
+  - name: codigo
+    description: Key type as Olinda returns it.
+    tests:
+    - unique
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - CPF
+          - CNPJ
+          - Celular
+          - e-mail
+          - Aleatória
+  - name: rotulo
+    description: Display label. e-mail is shown as E-mail.
+    tests:
+    - not_null
+  - name: ordem
+    description: Chart order from 1 to 5.
+    tests:
+    - not_null
+  - name: fonte
+    description: Olinda ChavesPix.
+    tests:
+    - not_null

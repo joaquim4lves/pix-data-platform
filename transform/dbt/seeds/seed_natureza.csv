@@ -1,0 +1,10 @@
+codigo,rotulo,descricao,publicado,fonte
+P2P,Pessoa física para pessoa física,"Pagador pessoa física, recebedor pessoa física",true,bcb-relatorio-anual-spi-2025
+P2B,Pessoa física para pessoa jurídica,"Pagador pessoa física, recebedor pessoa jurídica",true,bcb-relatorio-anual-spi-2025
+B2P,Pessoa jurídica para pessoa física,"Pagador pessoa jurídica, recebedor pessoa física",true,bcb-relatorio-anual-spi-2025
+B2B,Pessoa jurídica para pessoa jurídica,"Pagador pessoa jurídica, recebedor pessoa jurídica",true,bcb-relatorio-anual-spi-2025
+P2G,Pessoa física para o governo,"Pagador pessoa física, recebedor governo",true,bcb-relatorio-gestao-pix-2023-2025
+G2P,Governo para pessoa física,"Pagador governo, recebedor pessoa física",false,convencao-pbg
+B2G,Pessoa jurídica para o governo,"Pagador pessoa jurídica, recebedor governo",false,convencao-pbg
+G2B,Governo para pessoa jurídica,"Pagador governo, recebedor pessoa jurídica",false,convencao-pbg
+G2G,Governo para governo,"Pagador governo, recebedor governo",false,convencao-pbg

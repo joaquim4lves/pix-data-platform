@@ -13,6 +13,9 @@ htmlcov/
 data/
 *.duckdb
 *.duckdb.wal
+transform/dbt/target/
+transform/dbt/dbt_packages/
+transform/dbt/logs/
 
 # Terraform. Lock files are committed. State, plans, and Lambda zips are not.
 .terraform/

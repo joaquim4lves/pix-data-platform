@@ -1,0 +1,195 @@
+version: 2
+models:
+- name: stg_estatisticas_transacoes_pix
+  description: >-
+    Typed, renamed EstatisticasTransacoesPix. Measures stay DECIMAL(38, 8), the scale the raw writer stores.
+  columns:
+  - name: ano_mes
+    description: Year and month as YYYYMM.
+  - name: pagador_tipo_pessoa
+    description: Payer person type, PF or PJ, on this national row.
+  - name: recebedor_tipo_pessoa
+    description: Receiver person type, PF or PJ, on this national row.
+  - name: pagador_regiao
+    description: Payer macro-region as Olinda spells it.
+  - name: recebedor_regiao
+    description: Receiver macro-region as Olinda spells it.
+  - name: pagador_faixa_idade
+    description: Payer age band as Olinda spells it.
+  - name: recebedor_faixa_idade
+    description: Receiver age band as Olinda spells it.
+  - name: forma_iniciacao
+    description: Initiation-form code.
+  - name: natureza
+    description: NATUREZA code. Unknown codes are kept.
+  - name: finalidade
+    description: Finalidade code or the API text.
+  - name: valor
+    description: Settled amount for this grain. Adds to the national month.
+  - name: quantidade
+    description: Settled payment count for this grain. Adds to the national month.
+- name: stg_transacoes_pix_municipio
+  description: >-
+    Typed, renamed TransacoesPixPorMunicipio. Null IBGE codes are preserved here. The N/D label is applied
+    downstream.
+  columns:
+  - name: ano_mes
+    description: Year and month as YYYYMM.
+  - name: municipio_ibge
+    description: IBGE municipality code, or 0 for Nao informado.
+  - name: municipio
+    description: Municipality name as Olinda sent it, before the N/D rewrite.
+  - name: uf_ibge
+    description: IBGE state code, or 0 for Nao informado.
+  - name: uf_nome
+    description: State name from the IBGE seed, or the raw name when the code is unknown.
+  - name: sigla_regiao
+    description: Macro-region abbreviation. Null for Nao informado.
+  - name: regiao_nome
+    description: Macro-region display name.
+  - name: valor_pagador_pf
+    description: Value sent by pessoa fisica payers in this municipality-month.
+  - name: quantidade_pagador_pf
+    description: Payment count sent by pessoa fisica payers.
+  - name: valor_pagador_pj
+    description: Value sent by pessoa juridica payers in this municipality-month.
+  - name: quantidade_pagador_pj
+    description: Payment count sent by pessoa juridica payers.
+  - name: valor_recebedor_pf
+    description: Value received by pessoa fisica in this municipality-month.
+  - name: quantidade_recebedor_pf
+    description: Payment count received by pessoa fisica.
+  - name: valor_recebedor_pj
+    description: Value received by pessoa juridica in this municipality-month.
+  - name: quantidade_recebedor_pj
+    description: Payment count received by pessoa juridica.
+  - name: quantidade_pessoas_pagador_pf
+    description: Distinct pessoa fisica payers. Not additive across months or cities.
+  - name: quantidade_pessoas_pagador_pj
+    description: Distinct pessoa juridica payers. Not additive across months or cities.
+  - name: quantidade_pessoas_recebedor_pf
+    description: Distinct pessoa fisica receivers. Not additive across months or cities.
+  - name: quantidade_pessoas_recebedor_pj
+    description: Distinct pessoa juridica receivers. Not additive across months or cities.
+- name: stg_chaves_pix
+  description: >-
+    Typed, renamed ChavesPix. ISPB stays text so leading zeros survive. The month key is derived downstream.
+  columns:
+  - name: data_referencia
+    description: Snapshot date, the last calendar day of the month.
+  - name: ispb
+    description: Institution identifier, left-padded to 8 characters.
+  - name: nome
+    description: Display name.
+  - name: natureza_usuario
+    description: Key holder person type, PF or PJ.
+  - name: tipo_chave
+    description: PIX key type as Olinda spells it.
+  - name: quantidade_chaves
+    description: Stock of keys. Not a payment count.
+  - name: segmento
+    description: Institution segment on the snapshot.
+- name: stg_app_pix_keys
+  description: >-
+    Typed CDC log for the PIX key registry. ISPB is left-padded to 8 characters. lsn_ord is the WAL order.
+  columns:
+  - name: op
+    description: 'CDC operation: insert, update, or delete.'
+  - name: lsn
+    description: Commit end LSN in Postgres display form.
+  - name: lsn_ord
+    description: >-
+      Fixed-width hex of the LSN. Later commits sort after earlier ones. File order and commit_ts do not.
+  - name: commit_ts
+    description: Commit timestamp in UTC.
+  - name: pk
+    description: Primary key payload from the envelope, text.
+  - name: id
+    description: Operational primary key.
+  - name: key_type
+    description: PIX key type, the same literals as dim_tipo_chave.
+  - name: key_value
+    description: Key value as the simulated PSP stored it.
+  - name: person_type
+    description: Key holder person type, PF or PJ.
+  - name: ispb
+    description: Institution identifier, left-padded to 8 characters.
+  - name: municipio_ibge
+    description: IBGE municipality code, or 0 for Nao informado.
+  - name: status
+    description: Operational status after this image.
+  - name: created_at
+    description: Row creation timestamp from Postgres.
+  - name: updated_at
+    description: Row update timestamp from Postgres.
+- name: stg_app_pix_transactions
+  description: >-
+    Typed CDC log for operational PIX transactions. amount is the text pgoutput emitted, cast to DECIMAL(18,
+    2).
+  columns:
+  - name: op
+    description: 'CDC operation: insert, update, or delete.'
+  - name: lsn
+    description: Commit end LSN in Postgres display form.
+  - name: lsn_ord
+    description: >-
+      Fixed-width hex of the LSN. Later commits sort after earlier ones. File order and commit_ts do not.
+  - name: commit_ts
+    description: Commit timestamp in UTC.
+  - name: pk
+    description: Primary key payload from the envelope, text.
+  - name: id
+    description: Operational primary key.
+  - name: end_to_end_id
+    description: PIX end-to-end id.
+  - name: amount
+    description: Payment amount in reais.
+  - name: payer_ispb
+    description: Payer ISPB, 8 characters.
+  - name: receiver_ispb
+    description: Receiver ISPB, 8 characters.
+  - name: municipio_ibge
+    description: IBGE municipality code, or 0 for Nao informado.
+  - name: forma_iniciacao
+    description: Initiation-form code.
+  - name: direction
+    description: inbound or outbound from the simulated PSP.
+  - name: status
+    description: Operational status after this image.
+  - name: occurred_at
+    description: When the payment occurred.
+  - name: created_at
+    description: Row creation timestamp from Postgres.
+  - name: updated_at
+    description: Row update timestamp from Postgres.
+- name: stg_app_pix_disputes
+  description: >-
+    Typed CDC log for simulated MED disputes. resolved_at is null while the dispute is open.
+  columns:
+  - name: op
+    description: 'CDC operation: insert, update, or delete.'
+  - name: lsn
+    description: Commit end LSN in Postgres display form.
+  - name: lsn_ord
+    description: >-
+      Fixed-width hex of the LSN. Later commits sort after earlier ones. File order and commit_ts do not.
+  - name: commit_ts
+    description: Commit timestamp in UTC.
+  - name: pk
+    description: Primary key payload from the envelope, text.
+  - name: id
+    description: Operational primary key.
+  - name: transaction_id
+    description: Payment this dispute refers to.
+  - name: reason
+    description: Dispute reason.
+  - name: status
+    description: Operational status after this image.
+  - name: opened_at
+    description: When the dispute was opened.
+  - name: resolved_at
+    description: When the dispute was resolved. Null while it is open.
+  - name: created_at
+    description: Row creation timestamp from Postgres.
+  - name: updated_at
+    description: Row update timestamp from Postgres.
