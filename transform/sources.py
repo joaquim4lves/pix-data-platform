@@ -29,6 +29,7 @@ class S3Raw:
     access_key_id: str
     secret_access_key: str
     endpoint_url: str | None
+    session_token: str | None = None
 
 
 RawLocation = LocalRaw | S3Raw
@@ -75,8 +76,12 @@ def s3_statements(location: S3Raw) -> list[str]:
         statements.append(f"SET s3_use_ssl={use_ssl}")
         statements.append("SET s3_url_style='path'")
     statements.append(f"SET s3_region={sql_literal(location.region)}")
-    statements.append(f"SET s3_access_key_id={sql_literal(location.access_key_id)}")
-    statements.append(f"SET s3_secret_access_key={sql_literal(location.secret_access_key)}")
+    if location.access_key_id:
+        statements.append(f"SET s3_access_key_id={sql_literal(location.access_key_id)}")
+    if location.secret_access_key:
+        statements.append(f"SET s3_secret_access_key={sql_literal(location.secret_access_key)}")
+    if location.session_token:
+        statements.append(f"SET s3_session_token={sql_literal(location.session_token)}")
     return statements
 
 
@@ -93,5 +98,6 @@ def location_from_env() -> RawLocation:
             access_key_id=settings.access_key_id,
             secret_access_key=settings.secret_access_key,
             endpoint_url=settings.endpoint_url,
+            session_token=settings.session_token,
         )
     raise ValueError(f"PIX_RAW_SOURCE must be 'local' or 's3', got {kind!r}")

@@ -32,6 +32,36 @@ def test_localstack_s3_uses_path_style_http() -> None:
     )
 
 
+def test_session_token_is_forwarded_when_present() -> None:
+    location = S3Raw(
+        bucket="pix-prod",
+        prefix="raw",
+        region="us-east-1",
+        access_key_id="ASIA",
+        secret_access_key="secret",
+        endpoint_url=None,
+        session_token="tok+en",
+    )
+    statements = "\n".join(s3_statements(location))
+    assert "s3_session_token='tok+en'" in statements
+    assert "s3_endpoint" not in statements
+
+
+def test_empty_keys_leave_duckdb_on_its_credential_chain() -> None:
+    location = S3Raw(
+        bucket="pix-prod",
+        prefix="raw",
+        region="us-east-1",
+        access_key_id="",
+        secret_access_key="",
+        endpoint_url=None,
+    )
+    statements = "\n".join(s3_statements(location))
+    assert "s3_access_key_id" not in statements
+    assert "s3_secret_access_key" not in statements
+    assert "s3_region='us-east-1'" in statements
+
+
 def test_real_s3_does_not_force_a_custom_endpoint() -> None:
     location = S3Raw(
         bucket="pix-prod",

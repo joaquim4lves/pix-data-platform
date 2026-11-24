@@ -38,3 +38,41 @@ jobs:
         run: make lint
       - name: Test
         run: make test
+
+  terraform:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: "v0.54.0"
+      - name: tflint init
+        run: tflint --init
+        working-directory: infra/terraform
+      - name: Format
+        run: terraform fmt -check -recursive -diff infra/terraform
+      - name: Validate bootstrap
+        working-directory: infra/terraform/bootstrap
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+      - name: Validate dev
+        working-directory: infra/terraform/envs/dev
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+      - name: tflint
+        run: tflint --recursive --config "$(pwd)/infra/terraform/.tflint.hcl"
+        working-directory: infra/terraform
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: checkov
+        run: |
+          python -m pip install "checkov==3.2.449"
+          checkov -d infra/terraform --config-file infra/terraform/.checkov.yaml --framework terraform --compact

@@ -15,11 +15,13 @@ from cdc.settings import CdcSettings
 
 
 def client(service: str, settings: CdcSettings) -> Any:
-    kwargs: dict[str, Any] = {
-        "region_name": settings.region,
-        "aws_access_key_id": settings.access_key_id,
-        "aws_secret_access_key": settings.secret_access_key,
-    }
+    kwargs: dict[str, Any] = {"region_name": settings.region}
+    if settings.access_key_id:
+        kwargs["aws_access_key_id"] = settings.access_key_id
+    if settings.secret_access_key:
+        kwargs["aws_secret_access_key"] = settings.secret_access_key
+    if settings.session_token:
+        kwargs["aws_session_token"] = settings.session_token
     if settings.endpoint_url:
         kwargs["endpoint_url"] = settings.endpoint_url
         if service == "s3":

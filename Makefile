@@ -1,4 +1,4 @@
-.PHONY: up down test lint ingest backfill ensure-bucket model dq migrate api load cdc apply e2e
+.PHONY: up down test lint ingest backfill ensure-bucket model dq migrate api load cdc apply e2e tf-check
 
 PYTHON ?= python3
 VENV := .venv
@@ -59,3 +59,10 @@ apply:
 
 e2e:
 	$(PY) -m cdc e2e
+
+tf-check:
+	terraform fmt -check -recursive -diff infra/terraform
+	terraform -chdir=infra/terraform/bootstrap init -backend=false -input=false
+	terraform -chdir=infra/terraform/bootstrap validate
+	terraform -chdir=infra/terraform/envs/dev init -backend=false -input=false
+	terraform -chdir=infra/terraform/envs/dev validate
