@@ -17,6 +17,11 @@ transform/dbt/target/
 transform/dbt/dbt_packages/
 transform/dbt/logs/
 
+# Local Airflow. The metadata database lives in the compose Postgres volume.
+.airflow/
+simple_auth_manager_passwords.json.generated
+airflow.cfg
+
 # Terraform. Lock files are committed. State, plans, and Lambda zips are not.
 .terraform/
 *.tfstate

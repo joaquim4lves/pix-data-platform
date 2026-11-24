@@ -1,6 +1,6 @@
 # Deploy and destroy the dev account
 
-The stack is `infra/terraform`. It does not create an EC2 instance, an RDS database, a load balancer, or a NAT gateway. Postgres, the pgoutput consumer, Airflow, and Metabase stay in Docker. Metabase is not installed by this runbook. The dotted edge in the diagram is the SQL path from a local Metabase to the Athena workgroup.
+The stack is `infra/terraform`. It does not create an EC2 instance, an RDS database, a load balancer, or a NAT gateway. Postgres, the pgoutput consumer, Airflow, and Metabase stay in Docker. Airflow is the compose profile in [airflow-local.md](airflow-local.md), not MWAA. Metabase is not installed by this runbook. The dotted edge in the diagram is the SQL path from a local Metabase to the Athena workgroup.
 
 ```mermaid
 ---

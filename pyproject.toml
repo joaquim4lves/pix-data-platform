@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pix-data-platform"
-version = "0.5.0"
-description = "PIX open data from Banco Central do Brasil, a dbt star schema on DuckDB, CDC from a simulated PSP, and low-cost AWS Terraform"
+version = "0.6.0"
+description = "PIX open data from Banco Central do Brasil, a dbt star schema on DuckDB, local Airflow, CDC from a simulated PSP, and low-cost AWS Terraform"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -30,9 +30,13 @@ dev = [
   "pytest>=8.3",
   "ruff>=0.7",
 ]
+airflow = [
+  "apache-airflow>=3.4,<3.5",
+  "astronomer-cosmos>=1.16,<1.17",
+]
 
 [tool.setuptools.packages.find]
-include = ["ingestion*", "transform*", "payments*", "cdc*"]
+include = ["ingestion*", "transform*", "payments*", "cdc*", "orchestration*"]
 
 [tool.setuptools.package-data]
 transform = ["sql/**/*.sql"]
@@ -49,7 +53,7 @@ addopts = "-q --tb=short"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["ingestion", "transform", "payments", "cdc", "tests"]
+src = ["ingestion", "transform", "payments", "cdc", "orchestration", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

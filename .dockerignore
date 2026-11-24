@@ -1,0 +1,13 @@
+.venv
+.git
+data
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+transform/dbt/target
+transform/dbt/logs
+transform/dbt/dbt_packages
+.airflow
+*.duckdb
+*.egg-info

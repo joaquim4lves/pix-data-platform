@@ -1,0 +1,8 @@
+# Installed into the Airflow image on top of apache/airflow:3.4.0.
+# apache-airflow is pinned again so pip cannot upgrade the copy in the base image.
+apache-airflow==3.4.0
+astronomer-cosmos>=1.16,<1.17
+dbt-core>=1.8,<2
+dbt-duckdb>=1.9,<2
+apache-airflow-providers-postgres>=6,<8
+psycopg[binary]>=3.2

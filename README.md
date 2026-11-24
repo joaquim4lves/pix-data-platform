@@ -2,7 +2,7 @@
 
 Senior backend engineer and tech lead with 10+ years shipping production APIs in Python and Node. This repository is an end-to-end data platform I designed and built: public PIX payments data from Banco Central do Brasil lands in S3, is transformed and tested in dbt, orchestrated in Airflow, and explored in Metabase, with AWS infrastructure in Terraform. It applies production habits (idempotent ingestion, data tests, retries, freshness checks, infrastructure as code) to an analytical stack in the payments domain.
 
-v0.1 is the ingestion slice: public PIX statistics from the BCB Olinda API land as Parquet partitions on S3. LocalStack stands in for S3 so the slice runs without an AWS account. v0.2 models that raw zone as a star schema in DuckDB. v0.3 adds a simulated PSP on Postgres and captures its changes with logical replication. v0.4 is the low-cost AWS account (S3, Lambda, SQS, Glue, Athena). v0.5 ports the warehouse to dbt. Postgres, Airflow, and Metabase stay on the laptop. Later releases add the Airflow DAGs.
+v0.1 is the ingestion slice: public PIX statistics from the BCB Olinda API land as Parquet partitions on S3. LocalStack stands in for S3 so the slice runs without an AWS account. v0.2 models that raw zone as a star schema in DuckDB. v0.3 adds a simulated PSP on Postgres and captures its changes with logical replication. v0.4 is the low-cost AWS account (S3, Lambda, SQS, Glue, Athena). v0.5 ports the warehouse to dbt. v0.6 runs Airflow in Docker on the laptop. Postgres, Airflow, and Metabase stay there. In AWS, EventBridge still invokes the Lambdas. There is no MWAA.
 
 ```mermaid
 flowchart LR
@@ -45,7 +45,11 @@ make backfill START=202011 END=202012
 python -m ingestion.bcb ingest --entities ChavesPix --lookback-months 3
 PIX_RAW_SOURCE=s3 make model && make dq
 make dbt-deps && make dbt-build && make dbt-docs
+make airflow-up
+make airflow-test
 ```
+
+`make airflow-up` needs `pip install -e '.[dev,airflow]'`. It builds the Airflow 3.4 image and starts the `airflow` compose profile. `make airflow-test` does not start those containers. It imports the DAGs. The UI is on port 8080, and new DAGs are paused. The steps are in [docs/runbooks/airflow-local.md](docs/runbooks/airflow-local.md).
 
 The Lambda-style entrypoint is `ingestion.bcb.handler.handler`. It reads the same environment variables and accepts `{"mode": "ingest"}` or `{"mode": "backfill", "start": 202011, "end": 202012}`.
 
@@ -224,6 +228,41 @@ make dbt-build
 make dbt-docs
 ```
 
+## v0.6 scope
+
+Airflow 3.4 runs in Docker, profile `airflow`, with LocalExecutor. The metadata database is a separate database on the compose Postgres. LocalStack is the S3 and SQS the tasks call. Nothing in this slice is MWAA or an Airflow service in the account. EventBridge and the two Lambdas are unchanged.
+
+```mermaid
+flowchart LR
+  subgraph bcb["bcb_pix_monthly"]
+    ent["entity map<br/>pool olinda"] --> rawb["asset raw/bcb"]
+    rawb --> dbtb["dbt facts and tests"]
+    dbtb --> freshb["source freshness"]
+  end
+  subgraph cdc["app_cdc_merge"]
+    drain["slot and SQS drain"] --> dbtc["dbt incremental cur_*"]
+    dbtc --> freshc["source freshness"]
+  end
+  subgraph maint["maintenance"]
+    lag["slot lag"]
+    quar["quarantine report"]
+  end
+  rawapp["asset raw/app or hourly"] --> drain
+```
+
+`bcb_pix_monthly` runs at 07:00 America/Sao_Paulo on the 2nd. One task per Olinda entity calls the existing ingestion pipeline. A scheduled run uses the watermark and the lookback window, and it overwrites partitions. `catchup` is off. A backfill is DAG conf `{"start":"202011","end":"202012"}` or `{"ano_mes":"202401"}`, or `airflow dags backfill`, which takes the logical month in America/Sao_Paulo. The Olinda pool is one slot. The task retries with exponential backoff after the client has already retried HTTP 500. Cosmos renders the dbt models upstream of the three facts, with tests, and a task runs `dbt source freshness`. The run publishes assets `s3://<bucket>/raw/bcb/` and `dbt://pix_data_platform/bcb_marts`.
+
+`app_cdc_merge` runs at minute 15 every hour, or when `s3://<bucket>/raw/app/` is updated. It drains the logical slot to SQS and applies the queue, then builds the incremental `cur_*` models and checks CDC freshness. The drain does not emit `raw/app`, so the DAG does not schedule itself. It emits `dbt://pix_data_platform/cur_app`.
+
+`maintenance` runs at 08:00 America/Sao_Paulo. It reports replication-slot lag and any object under `quarantine/`.
+
+Failure callbacks log. `AIRFLOW_ALERT_SLACK_WEBHOOK_URL` also POSTs that line. Deadlines are measured from queue time, which is the Airflow 3 replacement for task SLAs. Pools, the Postgres connection, and the lag limit come from the environment. The runbook is [docs/runbooks/airflow-local.md](docs/runbooks/airflow-local.md). The decision is [docs/adr/ADR-006.md](docs/adr/ADR-006.md).
+
+```bash
+make airflow-up
+make airflow-test
+```
+
 ## Ingestion behavior
 
 A run asks Olinda for each month in the window with `$filter`, validates every row, and writes one Parquet file per month:
@@ -246,13 +285,15 @@ If a row breaks the contract, that entity stops, the raw response is written to 
 | v0.2 | Star schema in DuckDB over the raw Parquet |
 | v0.3 | FastAPI + Postgres payments app, CDC via `pgoutput` |
 | v0.4 | Low-cost serverless AWS. Postgres and Airflow stay in Docker |
-| v0.5 | This slice: dbt models and tests on DuckDB, Athena target configured |
-| v0.6 | Airflow orchestration |
+| v0.5 | dbt models and tests on DuckDB, Athena target configured |
+| v0.6 | This slice: Airflow in Docker. EventBridge stays the AWS schedule |
 | v1.0 | Metabase and the final README |
 
 ## Layout
 
 ```text
+orchestration/dags/            Airflow DAGs, local profile only
+orchestration/                 ingest, CDC drain, freshness, alerts
 ingestion/bcb/                 client, contracts, watermark, Parquet writer, CLI, handler
 payments/                      FastAPI app, SQLAlchemy models, Alembic, load generator
 cdc/                           pgoutput decoder, SQS publisher, Parquet sink, Lambda handler
@@ -261,9 +302,9 @@ transform/sql/                 legacy SQL runner, the parity oracle
 transform/athena/views.sql     legacy Athena script, still checked, not the deploy path
 docs/queries/                  example analytical questions
 docs/spike-bcb.md              what the live Olinda service actually does
-docs/adr/                      architecture decisions, including ADR-005
+docs/adr/                      architecture decisions, including ADR-006
 docs/architecture/             infrastructure diagram
-docs/runbooks/                 deploy and destroy
+docs/runbooks/                 deploy, destroy, and local Airflow
 docs/cost-estimate.md          expected AWS bill
 docs/career/                   positioning kit, not part of the pipeline
 infra/terraform/               modules, bootstrap, and envs/dev
