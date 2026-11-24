@@ -17,6 +17,9 @@ FACTS = (
     "fct_transacoes_mensal",
     "fct_transacoes_municipio",
     "fct_chaves_pix",
+    "cur_pix_key",
+    "cur_pix_transaction",
+    "cur_pix_dispute",
 )
 
 

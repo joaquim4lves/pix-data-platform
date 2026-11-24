@@ -1,6 +1,18 @@
 services:
   postgres:
     image: postgres:16.6
+    # wal_level is read at server start. Recreate the container after changing it.
+    # max_slot_wal_keep_size bounds how much WAL an idle CDC slot can pin (megabytes).
+    command:
+      - postgres
+      - -c
+      - wal_level=logical
+      - -c
+      - max_wal_senders=4
+      - -c
+      - max_replication_slots=4
+      - -c
+      - max_slot_wal_keep_size=1024
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-pix}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pix}
@@ -17,7 +29,7 @@ services:
   localstack:
     image: localstack/localstack:4.7.0
     environment:
-      SERVICES: s3
+      SERVICES: s3,sqs
       AWS_DEFAULT_REGION: us-east-1
       DEBUG: "0"
     ports:

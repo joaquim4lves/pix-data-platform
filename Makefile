@@ -1,4 +1,4 @@
-.PHONY: up down test lint ingest backfill ensure-bucket model dq
+.PHONY: up down test lint ingest backfill ensure-bucket model dq migrate api load cdc apply e2e
 
 PYTHON ?= python3
 VENV := .venv
@@ -41,3 +41,21 @@ model:
 
 dq:
 	$(PY) -m transform dq
+
+migrate:
+	$(PY) -m payments migrate
+
+api:
+	$(PY) -m payments serve
+
+load:
+	$(PY) -m payments load
+
+cdc:
+	$(PY) -m cdc consume
+
+apply:
+	$(PY) -m cdc apply
+
+e2e:
+	$(PY) -m cdc e2e

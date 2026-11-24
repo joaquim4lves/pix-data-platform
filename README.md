@@ -2,7 +2,7 @@
 
 Senior backend engineer and tech lead with 10+ years shipping production APIs in Python and Node. This repository is an end-to-end data platform I designed and built: public PIX payments data from Banco Central do Brasil lands in S3, is transformed and tested in dbt, orchestrated in Airflow, and explored in Metabase, with AWS infrastructure in Terraform. It applies production habits (idempotent ingestion, data tests, retries, freshness checks, infrastructure as code) to an analytical stack in the payments domain.
 
-v0.1 is the ingestion slice: public PIX statistics from the BCB Olinda API land as Parquet partitions on S3. LocalStack stands in for S3 so the slice runs without an AWS account. v0.2 models that raw zone as a star schema in DuckDB. Later releases add the payments app, AWS, dbt (a port of these models), Airflow, and Metabase.
+v0.1 is the ingestion slice: public PIX statistics from the BCB Olinda API land as Parquet partitions on S3. LocalStack stands in for S3 so the slice runs without an AWS account. v0.2 models that raw zone as a star schema in DuckDB. v0.3 adds a simulated PSP on Postgres and captures its changes with logical replication. Later releases add AWS, dbt (a port of these models), Airflow, and Metabase.
 
 ```mermaid
 flowchart LR
@@ -34,7 +34,7 @@ cp .env.example .env   # optional; the defaults match this compose file
 make up && make ingest && make test
 ```
 
-`make up` starts Postgres 16 and LocalStack S3, waits until both are healthy, and creates the raw bucket. `make ingest` pulls the last three months from the live BCB API and overwrites those partitions. `make test` runs the unit suite and, when LocalStack is up, the S3 integration tests (partition overwrite, and DuckDB httpfs). CI runs `make lint` and `make test` without Docker; those tests skip when port 4566 is closed. The DuckDB model tests use fixture Parquet and do not need the network.
+`make up` starts Postgres 16 (with `wal_level=logical`) and LocalStack S3 and SQS, waits until both are healthy, and creates the raw bucket. `make ingest` pulls the last three months from the live BCB API and overwrites those partitions. `make test` runs the unit suite and, when LocalStack is up, the S3 integration tests. The API tests run when Postgres answers on port 5432; CI starts a Postgres service for them. The logical-replication test runs only when `wal_level` is `logical`, so it skips in CI. The DuckDB model tests use fixture Parquet and do not need the network.
 
 Other targets:
 
@@ -61,7 +61,7 @@ In this release:
 - Quarantine of a payload that breaks the contract, under `s3://<bucket>/quarantine/<entity>/`
 - Unit tests for the client, the watermark, and partition overwrite, plus a LocalStack integration test that skips when the endpoint is down
 
-Not in v0.1: the warehouse, the payments app, CDC, Terraform, real AWS, dbt, Airflow, Metabase. The star schema is v0.2. Postgres is running so the later OLTP slice has a database; ingestion does not connect to it.
+Not in v0.1: the warehouse, the payments app, CDC, Terraform, real AWS, dbt, Airflow, Metabase. The star schema is v0.2. The payments app and CDC are v0.3. Postgres is running so that slice has a database; ingestion does not connect to it.
 
 The API behaves differently from a plain OData month parameter. Read [docs/spike-bcb.md](docs/spike-bcb.md) before changing the client. The local-first choice is recorded in [docs/adr/ADR-001.md](docs/adr/ADR-001.md).
 
@@ -86,6 +86,29 @@ The models are plain SQL, one file each, under `transform/sql/` in four layers: 
 
 Tests build a small Parquet fixture with the ingestion writer and run the models and the checks locally. CI does not call Olinda or S3 for this slice. The LocalStack httpfs test skips when port 4566 is closed, same as the ingestion integration test.
 
+## v0.3 scope
+
+A simulated payment institution lives in the compose Postgres: a PIX key registry, the payments that institution sends and receives, and a small MED-style dispute table. `ispb` is 8 digits, `municipio_ibge` is the IBGE municipality code, and key types and initiation forms use the same literals as the v0.2 dimensions, so the operational rows can be joined to them.
+
+```mermaid
+flowchart LR
+  Api["FastAPI payments"] --> Pg["Postgres logical WAL"]
+  Pg --> Slot["pgoutput slot"]
+  Slot --> Sqs["SQS pix-cdc"]
+  Sqs --> Sink["Parquet sink"]
+  Sink --> Raw["s3 raw/app/table/dt="]
+  Raw --> Cur["DuckDB cur_* current state"]
+```
+
+`make api` applies the Alembic migrations and serves the API on port 8000 (`/health`, `/docs`, CRUD under `/keys`, `/transactions`, and `/disputes`). `make load` writes inserts, then updates, then deletes, one commit each. `make cdc` reads the `pgoutput` slot and publishes a JSON envelope (`op`, `table`, `pk`, `before`, `after`, `lsn`, `commit_ts`) to SQS. `make apply` writes those messages as Parquet at `raw/app/<table>/dt=YYYY-MM-DD/` and skips a repeat of the same commit LSN and primary key. `make model` builds `cur_pix_key`, `cur_pix_transaction`, and `cur_pix_dispute`: the latest image per id, with deletes removed.
+
+A replication slot does not see rows that were committed before it existed. Start `make cdc` before `make load`, or use `make e2e`, which recreates the slot, resets the tables, loads, drains the queue, and checks the current-state tables against Postgres. `make e2e` needs `make up` first. Debezium is not in this slice. The tradeoff, the at-least-once path, and the WAL retention risk are in [docs/adr/ADR-003.md](docs/adr/ADR-003.md).
+
+```bash
+make up
+make e2e
+```
+
 ## Ingestion behavior
 
 A run asks Olinda for each month in the window with `$filter`, validates every row, and writes one Parquet file per month:
@@ -106,7 +129,7 @@ If a row breaks the contract, that entity stops, the raw response is written to 
 | --- | --- |
 | v0.1 | Foundation and incremental BCB PIX ingestion |
 | v0.2 | This slice: star schema in DuckDB over the raw Parquet |
-| v0.3 | FastAPI + Postgres payments app, with CDC via logical replication (`pgoutput`) |
+| v0.3 | This slice: FastAPI + Postgres payments app, CDC via `pgoutput` |
 | v0.4 | Terraform on AWS. Real S3 replaces LocalStack; the client already switches on `AWS_ENDPOINT_URL` |
 | v0.5 | dbt models and tests |
 | v0.6 | Airflow orchestration |
@@ -116,7 +139,9 @@ If a row breaks the contract, that entity stops, the raw response is written to 
 
 ```text
 ingestion/bcb/                 client, contracts, watermark, Parquet writer, CLI, handler
-transform/sql/staging/         typed, renamed Olinda columns
+payments/                      FastAPI app, SQLAlchemy models, Alembic, load generator
+cdc/                           pgoutput decoder, SQS publisher, Parquet sink, Lambda handler
+transform/sql/staging/         typed Olinda columns and the CDC log
 transform/sql/intermediate/    N/D municipality, snapshot month, ISPB padding
 transform/sql/seeds/           natureza labels, IBGE UFs, other code lists
 transform/sql/marts/           dimensions and facts

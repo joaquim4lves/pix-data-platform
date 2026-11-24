@@ -38,6 +38,15 @@ def sql_literal(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
+def app_parquet_glob(location: RawLocation, table: str) -> str:
+    """Partition glob for ``raw/app/<table>/dt=YYYY-MM-DD/*.parquet``."""
+
+    if isinstance(location, LocalRaw):
+        return str(location.root / "app" / table / "dt=*" / "*.parquet")
+    prefix = location.prefix.strip("/")
+    return f"s3://{location.bucket}/{prefix}/app/{table}/dt=*/*.parquet"
+
+
 def parquet_glob(location: RawLocation, entity: str) -> str:
     """Partition glob for ``raw/bcb/<entity>/ano_mes=YYYYMM/part.parquet``."""
 
