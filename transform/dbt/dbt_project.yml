@@ -1,0 +1,31 @@
+name: pix_data_platform
+version: "0.5.0"
+config-version: 2
+profile: pix_data_platform
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages", "logs"]
+
+flags:
+  send_anonymous_usage_stats: false
+
+models:
+  pix_data_platform:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: "{{ 'table' if target.type == 'duckdb' else 'view' }}"
+
+seeds:
+  pix_data_platform:
+    +schema: seeds
+    +quote_columns: false

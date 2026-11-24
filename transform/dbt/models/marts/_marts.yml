@@ -1,0 +1,507 @@
+version: 2
+models:
+- name: dim_natureza
+  description: >-
+    One row per natureza code. Seed labels, plus any code in the extract that is missing from the seed,
+    kept with publicado false.
+  columns:
+  - name: codigo
+    description: Dimension key. A code missing from the seed is kept with this value as the label.
+    tests:
+    - unique
+    - not_null
+  - name: rotulo
+    description: Display label. Unknown codes use the raw code.
+  - name: descricao
+    description: Longer gloss from the seed. Null when the code was not in the seed.
+  - name: publicado
+    description: >-
+      True when a BCB source names the label. False for convention or inferred labels, and for unknown
+      codes.
+  - name: fonte
+    description: Citation for the label, or raw when the code was observed and not seeded.
+- name: dim_forma_iniciacao
+  description: >-
+    One row per initiation-form code, including Nao disponivel. Unknown codes from the extract are kept.
+  columns:
+  - name: codigo
+    description: Dimension key. A code missing from the seed is kept with this value as the label.
+    tests:
+    - unique
+    - not_null
+  - name: rotulo
+    description: Display label. Unknown codes use the raw code.
+  - name: publicado
+    description: >-
+      True when a BCB source names the label. False for convention or inferred labels, and for unknown
+      codes.
+  - name: fonte
+    description: Citation for the label, or raw when the code was observed and not seeded.
+- name: dim_finalidade
+  description: One row per finalidade, including Nao disponivel.
+  columns:
+  - name: codigo
+    description: Dimension key. A code missing from the seed is kept with this value as the label.
+    tests:
+    - unique
+    - not_null
+  - name: rotulo
+    description: Display label. Unknown codes use the raw code.
+  - name: fonte
+    description: Citation for the label, or raw when the code was observed and not seeded.
+- name: dim_faixa_idade
+  description: >-
+    One row per age band as Olinda spells it. ordem is null for a band that is not in the seed.
+  columns:
+  - name: codigo
+    description: Dimension key. A code missing from the seed is kept with this value as the label.
+    tests:
+    - unique
+    - not_null
+  - name: rotulo
+    description: Display label. Unknown codes use the raw code.
+  - name: ordem
+    description: Chart order. Null when the code was not in the seed.
+  - name: fonte
+    description: Citation for the label, or raw when the code was observed and not seeded.
+- name: dim_tipo_pessoa
+  description: Pessoa fisica and pessoa juridica, plus any code observed on a fact or a key stock.
+  columns:
+  - name: codigo
+    description: Dimension key. A code missing from the seed is kept with this value as the label.
+    tests:
+    - unique
+    - not_null
+  - name: rotulo
+    description: Display label. Unknown codes use the raw code.
+  - name: fonte
+    description: Citation for the label, or raw when the code was observed and not seeded.
+- name: dim_regiao
+  description: >-
+    Macro-region of the payer or the receiver. The key is the raw string so the fact joins without a translation.
+  columns:
+  - name: codigo
+    description: Dimension key. A code missing from the seed is kept with this value as the label.
+    tests:
+    - unique
+    - not_null
+  - name: rotulo
+    description: Display label. Unknown codes use the raw code.
+  - name: sigla
+    description: Abbreviation. Null for Nao informado and for an unknown region.
+  - name: fonte
+    description: Citation for the label, or raw when the code was observed and not seeded.
+- name: dim_tipo_chave
+  description: PIX key type. The key is the TipoChave string Olinda returns.
+  columns:
+  - name: codigo
+    description: Dimension key. A code missing from the seed is kept with this value as the label.
+    tests:
+    - unique
+    - not_null
+  - name: rotulo
+    description: Display label. Unknown codes use the raw code.
+  - name: ordem
+    description: Chart order. Null when the code was not in the seed.
+  - name: fonte
+    description: Citation for the label, or raw when the code was observed and not seeded.
+- name: dim_tempo
+  description: >-
+    One row per AnoMes present in any raw entity. data_inicio and data_fim are the first and last day
+    of that month. There is no day grain.
+  columns:
+  - name: ano_mes
+    description: Year and month as YYYYMM.
+    tests:
+    - unique
+    - not_null
+  - name: ano
+    description: Calendar year of ano_mes.
+  - name: mes
+    description: Month number, 1 through 12.
+  - name: trimestre
+    description: Quarter, 1 through 4.
+  - name: data_inicio
+    description: First day of the month.
+    tests:
+    - not_null
+  - name: data_fim
+    description: Last day of the month, including 29 February.
+    tests:
+    - not_null
+  - name: nome_mes
+    description: Portuguese month name.
+  - name: rotulo
+    description: Display label. Unknown codes use the raw code.
+- name: dim_municipio
+  description: >-
+    One row per municipality, including municipio_ibge 0 (Nao informado). Attributes come from the latest
+    month. UF sigla comes from the IBGE seed.
+  columns:
+  - name: municipio_ibge
+    description: IBGE municipality code, or 0 for Nao informado.
+    tests:
+    - unique
+    - not_null
+  - name: nome
+    description: Display name.
+    tests:
+    - not_null
+  - name: nome_fonte
+    description: Name as the source published it.
+  - name: uf_ibge
+    description: IBGE state code, or 0 for Nao informado.
+  - name: uf_sigla
+    description: State abbreviation from the IBGE seed. Null for municipio_ibge 0.
+  - name: uf_nome
+    description: State name from the IBGE seed, or the raw name when the code is unknown.
+  - name: sigla_regiao
+    description: Macro-region abbreviation. Null for Nao informado.
+  - name: regiao_nome
+    description: Macro-region display name.
+- name: dim_instituicao
+  description: >-
+    One row per ISPB. Type 1: nome and segmento come from the latest snapshot, so a rename does not keep
+    history.
+  columns:
+  - name: ispb
+    description: Institution identifier, left-padded to 8 characters.
+    tests:
+    - unique
+    - not_null
+  - name: nome
+    description: Display name.
+    tests:
+    - not_null
+  - name: segmento
+    description: Institution segment on the snapshot.
+  - name: ano_mes_referencia
+    description: Snapshot month the current name and segment came from.
+- name: fct_transacoes_mensal
+  description: >-
+    Monthly PIX transactions settled in SPI. Grain: month, payer and receiver person type, region, and
+    age band, initiation form, natureza, and finalidade. valor and quantidade add to the national month.
+    Payer and receiver are columns of the same row.
+  columns:
+  - name: ano_mes
+    description: Year and month as YYYYMM.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_tempo')
+          field: ano_mes
+  - name: pagador_tipo_pessoa
+    description: Payer person type, PF or PJ, on this national row.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_tipo_pessoa')
+          field: codigo
+  - name: recebedor_tipo_pessoa
+    description: Receiver person type, PF or PJ, on this national row.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_tipo_pessoa')
+          field: codigo
+  - name: pagador_regiao
+    description: Payer macro-region as Olinda spells it.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_regiao')
+          field: codigo
+  - name: recebedor_regiao
+    description: Receiver macro-region as Olinda spells it.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_regiao')
+          field: codigo
+  - name: pagador_faixa_idade
+    description: Payer age band as Olinda spells it.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_faixa_idade')
+          field: codigo
+  - name: recebedor_faixa_idade
+    description: Receiver age band as Olinda spells it.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_faixa_idade')
+          field: codigo
+  - name: forma_iniciacao
+    description: Initiation-form code.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_forma_iniciacao')
+          field: codigo
+  - name: natureza
+    description: NATUREZA code. Unknown codes are kept.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_natureza')
+          field: codigo
+  - name: finalidade
+    description: Finalidade code or the API text.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_finalidade')
+          field: codigo
+  - name: valor
+    description: Settled amount for this grain. Adds to the national month.
+    tests:
+    - not_null
+  - name: quantidade
+    description: Settled payment count for this grain. Adds to the national month.
+    tests:
+    - not_null
+- name: fct_transacoes_municipio
+  description: >-
+    PIX value and counts by municipality and month, including Nao informado. Grain: ano_mes, municipio_ibge.
+    Do not add the sent and received sides.
+  columns:
+  - name: ano_mes
+    description: Year and month as YYYYMM.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_tempo')
+          field: ano_mes
+  - name: municipio_ibge
+    description: IBGE municipality code, or 0 for Nao informado.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_municipio')
+          field: municipio_ibge
+  - name: valor_pagador_pf
+    description: Value sent by pessoa fisica payers in this municipality-month.
+  - name: quantidade_pagador_pf
+    description: Payment count sent by pessoa fisica payers.
+  - name: valor_pagador_pj
+    description: Value sent by pessoa juridica payers in this municipality-month.
+  - name: quantidade_pagador_pj
+    description: Payment count sent by pessoa juridica payers.
+  - name: valor_recebedor_pf
+    description: Value received by pessoa fisica in this municipality-month.
+  - name: quantidade_recebedor_pf
+    description: Payment count received by pessoa fisica.
+  - name: valor_recebedor_pj
+    description: Value received by pessoa juridica in this municipality-month.
+  - name: quantidade_recebedor_pj
+    description: Payment count received by pessoa juridica.
+  - name: quantidade_pessoas_pagador_pf
+    description: Distinct pessoa fisica payers. Not additive across months or cities.
+  - name: quantidade_pessoas_pagador_pj
+    description: Distinct pessoa juridica payers. Not additive across months or cities.
+  - name: quantidade_pessoas_recebedor_pf
+    description: Distinct pessoa fisica receivers. Not additive across months or cities.
+  - name: quantidade_pessoas_recebedor_pj
+    description: Distinct pessoa juridica receivers. Not additive across months or cities.
+  - name: valor_enviado
+    description: valor_pagador_pf plus valor_pagador_pj. Do not add this to valor_recebido.
+    tests:
+    - not_null
+  - name: quantidade_enviada
+    description: Payment count sent from this municipality.
+    tests:
+    - not_null
+  - name: valor_recebido
+    description: valor_recebedor_pf plus valor_recebedor_pj. Do not add this to valor_enviado.
+    tests:
+    - not_null
+  - name: quantidade_recebida
+    description: Payment count received in this municipality.
+    tests:
+    - not_null
+- name: fct_chaves_pix
+  description: >-
+    Stock of PIX keys. Grain: ano_mes, ispb, natureza_usuario, tipo_chave. Summing across months recounts
+    the same keys. This is not payment volume.
+  columns:
+  - name: ano_mes
+    description: Year and month as YYYYMM.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_tempo')
+          field: ano_mes
+  - name: data_referencia
+    description: Snapshot date, the last calendar day of the month.
+    tests:
+    - not_null
+  - name: ispb
+    description: Institution identifier, left-padded to 8 characters.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_instituicao')
+          field: ispb
+  - name: natureza_usuario
+    description: Key holder person type, PF or PJ.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_tipo_pessoa')
+          field: codigo
+  - name: tipo_chave
+    description: PIX key type as Olinda spells it.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_tipo_chave')
+          field: codigo
+  - name: quantidade_chaves
+    description: Stock of keys. Not a payment count.
+    tests:
+    - not_null
+- name: cur_pix_key
+  description: >-
+    Current PIX key registry. Grain: id. Deletes are removed. lsn_ord is stored so a later incremental
+    run can ignore a late file whose LSN is older.
+  columns:
+  - name: id
+    description: Operational primary key.
+    tests:
+    - unique
+    - not_null
+  - name: key_type
+    description: PIX key type, the same literals as dim_tipo_chave.
+    tests:
+    - not_null
+  - name: key_value
+    description: Key value as the simulated PSP stored it.
+    tests:
+    - not_null
+  - name: person_type
+    description: Key holder person type, PF or PJ.
+  - name: ispb
+    description: Institution identifier, left-padded to 8 characters.
+    tests:
+    - not_null
+  - name: municipio_ibge
+    description: IBGE municipality code, or 0 for Nao informado.
+  - name: status
+    description: Operational status after this image.
+  - name: created_at
+    description: Row creation timestamp from Postgres.
+  - name: updated_at
+    description: Row update timestamp from Postgres.
+  - name: lsn
+    description: Commit end LSN in Postgres display form.
+  - name: lsn_ord
+    description: >-
+      Fixed-width hex of the LSN. Later commits sort after earlier ones. File order and commit_ts do not.
+  - name: commit_ts
+    description: Commit timestamp in UTC.
+- name: cur_pix_transaction
+  description: >-
+    Current operational PIX transactions. Grain: id. A refunded payment stays. Deletes are removed.
+  columns:
+  - name: id
+    description: Operational primary key.
+    tests:
+    - unique
+    - not_null
+  - name: end_to_end_id
+    description: PIX end-to-end id.
+    tests:
+    - not_null
+  - name: amount
+    description: Payment amount in reais.
+    tests:
+    - not_null
+  - name: payer_ispb
+    description: Payer ISPB, 8 characters.
+    tests:
+    - not_null
+  - name: receiver_ispb
+    description: Receiver ISPB, 8 characters.
+    tests:
+    - not_null
+  - name: municipio_ibge
+    description: IBGE municipality code, or 0 for Nao informado.
+  - name: forma_iniciacao
+    description: Initiation-form code.
+  - name: direction
+    description: inbound or outbound from the simulated PSP.
+  - name: status
+    description: Operational status after this image.
+  - name: occurred_at
+    description: When the payment occurred.
+  - name: created_at
+    description: Row creation timestamp from Postgres.
+  - name: updated_at
+    description: Row update timestamp from Postgres.
+  - name: lsn
+    description: Commit end LSN in Postgres display form.
+  - name: lsn_ord
+    description: >-
+      Fixed-width hex of the LSN. Later commits sort after earlier ones. File order and commit_ts do not.
+  - name: commit_ts
+    description: Commit timestamp in UTC.
+- name: cur_pix_dispute
+  description: >-
+    Current simulated MED disputes. Grain: id. transaction_id points at cur_pix_transaction. A dispute
+    whose payment was deleted fails that relationship on purpose.
+  columns:
+  - name: id
+    description: Operational primary key.
+    tests:
+    - unique
+    - not_null
+  - name: transaction_id
+    description: Payment this dispute refers to.
+    tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('cur_pix_transaction')
+          field: id
+  - name: reason
+    description: Dispute reason.
+    tests:
+    - not_null
+  - name: status
+    description: Operational status after this image.
+    tests:
+    - not_null
+  - name: opened_at
+    description: When the dispute was opened.
+    tests:
+    - not_null
+  - name: resolved_at
+    description: When the dispute was resolved. Null while it is open.
+  - name: created_at
+    description: Row creation timestamp from Postgres.
+  - name: updated_at
+    description: Row update timestamp from Postgres.
+  - name: lsn
+    description: Commit end LSN in Postgres display form.
+  - name: lsn_ord
+    description: >-
+      Fixed-width hex of the LSN. Later commits sort after earlier ones. File order and commit_ts do not.
+  - name: commit_ts
+    description: Commit timestamp in UTC.

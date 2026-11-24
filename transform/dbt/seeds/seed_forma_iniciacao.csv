@@ -1,0 +1,10 @@
+codigo,rotulo,publicado,fonte
+DICT,Chave Pix,true,bcb-manual-iniciacao-pix-2.10
+MANU,Inserção manual dos dados,true,bcb-manual-iniciacao-pix-2.10
+INIC,Serviço de iniciação de transação de pagamento,true,bcb-manual-iniciacao-pix-2.10
+QRES,QR Code estático,true,bcb-manual-iniciacao-pix-2.10
+QRDN,QR Code dinâmico,true,bcb-manual-iniciacao-pix-2.10
+AUTO,Pix Automático,true,bcb-manual-iniciacao-pix-2.10
+APDN,Pix por aproximação,true,bcb-forum-pix-dominio-apdn
+APES,Pix por aproximação estático,false,inferido-par-qres-qrdn
+Nao disponivel,Não disponível,true,olinda-texto

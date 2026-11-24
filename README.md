@@ -2,7 +2,7 @@
 
 Senior backend engineer and tech lead with 10+ years shipping production APIs in Python and Node. This repository is an end-to-end data platform I designed and built: public PIX payments data from Banco Central do Brasil lands in S3, is transformed and tested in dbt, orchestrated in Airflow, and explored in Metabase, with AWS infrastructure in Terraform. It applies production habits (idempotent ingestion, data tests, retries, freshness checks, infrastructure as code) to an analytical stack in the payments domain.
 
-v0.1 is the ingestion slice: public PIX statistics from the BCB Olinda API land as Parquet partitions on S3. LocalStack stands in for S3 so the slice runs without an AWS account. v0.2 models that raw zone as a star schema in DuckDB. v0.3 adds a simulated PSP on Postgres and captures its changes with logical replication. v0.4 is the low-cost AWS account (S3, Lambda, SQS, Glue, Athena). Postgres, Airflow, and Metabase stay on the laptop. Later releases add dbt and the Airflow DAGs.
+v0.1 is the ingestion slice: public PIX statistics from the BCB Olinda API land as Parquet partitions on S3. LocalStack stands in for S3 so the slice runs without an AWS account. v0.2 models that raw zone as a star schema in DuckDB. v0.3 adds a simulated PSP on Postgres and captures its changes with logical replication. v0.4 is the low-cost AWS account (S3, Lambda, SQS, Glue, Athena). v0.5 ports the warehouse to dbt. Postgres, Airflow, and Metabase stay on the laptop. Later releases add the Airflow DAGs.
 
 ```mermaid
 flowchart LR
@@ -44,6 +44,7 @@ make down
 make backfill START=202011 END=202012
 python -m ingestion.bcb ingest --entities ChavesPix --lookback-months 3
 PIX_RAW_SOURCE=s3 make model && make dq
+make dbt-deps && make dbt-build && make dbt-docs
 ```
 
 The Lambda-style entrypoint is `ingestion.bcb.handler.handler`. It reads the same environment variables and accepts `{"mode": "ingest"}` or `{"mode": "backfill", "start": 202011, "end": 202012}`.
@@ -76,7 +77,7 @@ make dq
 
 DuckDB reads that bucket through httpfs. The first S3 build downloads the extension. An empty `AWS_ENDPOINT_URL` is real S3 and uses virtual-hosted addressing; a set endpoint (LocalStack) uses path-style HTTP. The same switch as the ingestion client.
 
-The models are plain SQL, one file each, under `transform/sql/` in four layers: seeds, staging, intermediate, and marts. Staging renames and types the Olinda columns. Intermediate keeps the monthly `N/D` municipality as `Não informado` (`municipio_ibge` 0) and derives the key-snapshot month. Marts are the star schema. Facts:
+The models were plain SQL, one file each, under `transform/sql/` in four layers: seeds, staging, intermediate, and marts. v0.5 keeps those files as the parity oracle. `make model` and `make dq` run dbt. Staging renames and types the Olinda columns. Intermediate keeps the monthly `N/D` municipality as `Não informado` (`municipio_ibge` 0) and derives the key-snapshot month. Marts are the star schema. Facts:
 
 - `fct_transacoes_mensal`: one row per month and the published combination of person type, region, age band, initiation form, natureza, and finalidade. `valor` and `quantidade` add to the national month.
 - `fct_transacoes_municipio`: one row per month and municipality, including `Não informado`. Value sent and value received are separate. Do not add them.
@@ -195,6 +196,34 @@ In this release:
 
 The default region is `us-east-1` because that is where the unit prices and the free tier are cheapest. `aws_region = "sa-east-1"` keeps the buckets in São Paulo. A quiet month should cost about zero dollars. Read the cost table before leaving a stack applied.
 
+## v0.5 scope
+
+`make model` is `dbt seed` and `dbt run`. `make dq` is `dbt test`. `make dbt-build` is `dbt build` (seeds, models, and tests). The default target is DuckDB (`dbt-duckdb`), reading the same raw Parquet zone as v0.2: a local directory, or S3 and LocalStack through httpfs when `PIX_RAW_SOURCE=s3`. An empty partition glob still builds. The seeded dimensions come up with zero fact rows.
+
+```mermaid
+flowchart LR
+  raw["raw Parquet<br/>bcb and app"] --> stg[staging]
+  seeds[seeds] --> dims[dimensions]
+  stg --> mid[intermediate]
+  mid --> dims
+  mid --> facts[facts]
+  mid --> cur["cur_* current state"]
+```
+
+Lineage is seeds and raw sources into staging, then intermediate, then marts. Staging renames and types. Intermediate keeps the `N/D` municipality, the key-snapshot month, and the latest CDC image per id (deletes included). Marts are the dimensions, the three facts, and `cur_pix_key`, `cur_pix_transaction`, and `cur_pix_dispute` with deletes removed. The current-state models are incremental on DuckDB: `delete+insert` on `id`, ordered by `lsn_ord`. A late file is applied only when its winning LSN is newer than the stored one. A winning delete is removed by a post-hook. Athena materializes those models as views, because the v0.4 catalog is Hive Parquet with partition projection, not Iceberg.
+
+The `athena` target (`dbt-athena-community`) points at Glue database prefix `pix` and the workgroup Terraform names `pix-data-dev` (override with `PIX_ATHENA_WORKGROUP`, `PIX_ATHENA_STAGING_DIR`, `PIX_ATHENA_DATA_DIR`, `PIX_GLUE_PREFIX`). CI does not run it. `dbt parse --target athena` does not call AWS. A real deploy is `dbt build --target athena` in that workgroup, which replaces applying `transform/athena/views.sql` by hand. The script stays: it is still rendered from the legacy SQL and checked in CI, and there is no AWS account in CI to compile against Glue.
+
+`schema.yml` describes every model and column. Generic tests cover unique keys, not-null columns, relationships, and the seed code lists. Singular tests cover the grain, the non-negative amounts, the `Não informado` municipality, one name per ISPB, and the current-state checks that are more than a single column. Source freshness uses the BCB partition month (the same checkpoint as the ingestion watermark) and `commit_ts` on the CDC logs. `dbt source freshness` is not part of CI. The Metabase dashboard is an exposure placeholder for v1.0. `make dbt-docs` writes the site under `transform/dbt/target`. `.github/workflows/dbt-docs.yml` publishes it to GitHub Pages when you run the workflow and Pages is enabled for Actions.
+
+A parity test builds the legacy SQL warehouse and the dbt warehouse from the same fixture Parquet, including the CDC log, and compares the rows. `cur_*` may carry `lsn_ord` on the dbt side. That column is the merge key. The business columns match. The decision is in [docs/adr/ADR-005.md](docs/adr/ADR-005.md).
+
+```bash
+make dbt-deps
+make dbt-build
+make dbt-docs
+```
+
 ## Ingestion behavior
 
 A run asks Olinda for each month in the window with `$filter`, validates every row, and writes one Parquet file per month:
@@ -216,8 +245,8 @@ If a row breaks the contract, that entity stops, the raw response is written to 
 | v0.1 | Foundation and incremental BCB PIX ingestion |
 | v0.2 | Star schema in DuckDB over the raw Parquet |
 | v0.3 | FastAPI + Postgres payments app, CDC via `pgoutput` |
-| v0.4 | This slice: low-cost serverless AWS. Postgres and Airflow stay in Docker |
-| v0.5 | dbt models and tests |
+| v0.4 | Low-cost serverless AWS. Postgres and Airflow stay in Docker |
+| v0.5 | This slice: dbt models and tests on DuckDB, Athena target configured |
 | v0.6 | Airflow orchestration |
 | v1.0 | Metabase and the final README |
 
@@ -227,14 +256,12 @@ If a row breaks the contract, that entity stops, the raw response is written to 
 ingestion/bcb/                 client, contracts, watermark, Parquet writer, CLI, handler
 payments/                      FastAPI app, SQLAlchemy models, Alembic, load generator
 cdc/                           pgoutput decoder, SQS publisher, Parquet sink, Lambda handler
-transform/sql/staging/         typed Olinda columns and the CDC log
-transform/sql/intermediate/    N/D municipality, snapshot month, ISPB padding
-transform/sql/seeds/           natureza labels, IBGE UFs, other code lists
-transform/sql/marts/           dimensions and facts
-transform/sql/checks/          data-quality queries (one row per violation)
+transform/dbt/                 dbt project: models, seeds, tests, macros
+transform/sql/                 legacy SQL runner, the parity oracle
+transform/athena/views.sql     legacy Athena script, still checked, not the deploy path
 docs/queries/                  example analytical questions
 docs/spike-bcb.md              what the live Olinda service actually does
-docs/adr/                      architecture decisions, including ADR-004
+docs/adr/                      architecture decisions, including ADR-005
 docs/architecture/             infrastructure diagram
 docs/runbooks/                 deploy and destroy
 docs/cost-estimate.md          expected AWS bill

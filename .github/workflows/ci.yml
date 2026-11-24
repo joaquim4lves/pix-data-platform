@@ -38,6 +38,11 @@ jobs:
         run: make lint
       - name: Test
         run: make test
+      - name: dbt build
+        run: |
+          python -c "from pathlib import Path; from tests.pix_warehouse import write_sample_raw; write_sample_raw(Path('data/raw'))"
+          make dbt-deps
+          make dbt-build
 
   terraform:
     runs-on: ubuntu-latest

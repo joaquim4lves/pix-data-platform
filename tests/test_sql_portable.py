@@ -3,7 +3,12 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SQL_ROOTS = (ROOT / "transform" / "sql", ROOT / "docs" / "queries")
+SQL_ROOTS = (
+    ROOT / "transform" / "sql",
+    ROOT / "transform" / "dbt" / "models",
+    ROOT / "transform" / "dbt" / "tests",
+    ROOT / "docs" / "queries",
+)
 FORBIDDEN = (
     "read_parquet",
     "hive_partitioning",

@@ -1,0 +1,121 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Parquet landing zone shared with ingestion and the CDC sink. DuckDB
+      reads it with read_parquet (local PIX_RAW_ROOT, or s3:// through httpfs
+      when PIX_RAW_SOURCE=s3). Athena reads the Glue tables Terraform creates
+      in the prefix_raw database. An empty glob becomes a zero-row sentinel
+      so seeds and dimensions still build. Freshness is a DuckDB column
+      named _loaded_at. The Athena tables do not have that column, so run
+      dbt source freshness on the duckdb target.
+    schema: "{{ (env_var('PIX_GLUE_PREFIX', 'pix') ~ '_raw') if target.type == 'athena' else 'raw' }}"
+    tables:
+      - name: estatisticas_transacoes_pix
+        description: >
+          Olinda EstatisticasTransacoesPix, one file per ano_mes partition.
+          Freshness uses that partition month, the same checkpoint the
+          ingestion watermark records. raw/bcb/_state/watermarks.json is not
+          a source: fixture builds do not write it.
+        loaded_at_field: _loaded_at
+        freshness:
+          warn_after: {count: 45, period: day}
+          error_after: {count: 120, period: day}
+        meta:
+          external_location: "(select *, cast(concat(substr(lpad(cast(ano_mes as varchar), 6, '0'), 1, 4), '-', substr(lpad(cast(ano_mes as varchar), 6, '0'), 5, 2), '-01') as timestamp) as _loaded_at from read_parquet(getvariable('pix_raw_estatisticas_transacoes_pix'), hive_partitioning=true, union_by_name=true))"
+        columns:
+          - name: AnoMes
+            description: Published month as YYYYMM.
+          - name: _loaded_at
+            description: First day of AnoMes, added by the DuckDB source scan for freshness.
+      - name: transacoes_pix_municipio
+        description: >
+          Olinda TransacoesPixPorMunicipio, including the published N/D
+          municipality. Freshness is the newest ano_mes partition.
+        loaded_at_field: _loaded_at
+        freshness:
+          warn_after: {count: 45, period: day}
+          error_after: {count: 120, period: day}
+        meta:
+          external_location: "(select *, cast(concat(substr(lpad(cast(ano_mes as varchar), 6, '0'), 1, 4), '-', substr(lpad(cast(ano_mes as varchar), 6, '0'), 5, 2), '-01') as timestamp) as _loaded_at from read_parquet(getvariable('pix_raw_transacoes_pix_municipio'), hive_partitioning=true, union_by_name=true))"
+        columns:
+          - name: AnoMes
+            description: Published month as YYYYMM.
+          - name: Municipio_Ibge
+            description: IBGE municipality code, null on the N/D row.
+          - name: _loaded_at
+            description: First day of AnoMes, added by the DuckDB source scan for freshness.
+      - name: chaves_pix
+        description: >
+          Olinda ChavesPix stock snapshot. The Hive partition is ano_mes.
+          Data inside the file is the last day of that month.
+        loaded_at_field: _loaded_at
+        freshness:
+          warn_after: {count: 45, period: day}
+          error_after: {count: 120, period: day}
+        meta:
+          external_location: "(select *, cast(concat(substr(lpad(cast(ano_mes as varchar), 6, '0'), 1, 4), '-', substr(lpad(cast(ano_mes as varchar), 6, '0'), 5, 2), '-01') as timestamp) as _loaded_at from read_parquet(getvariable('pix_raw_chaves_pix'), hive_partitioning=true, union_by_name=true))"
+        columns:
+          - name: Data
+            description: Snapshot date, the last day of the month in the extract.
+          - name: ISPB
+            description: Institution identifier as Olinda sent it, text so leading zeros survive.
+          - name: _loaded_at
+            description: First day of the ano_mes partition, added for DuckDB freshness.
+      - name: app_pix_keys
+        description: >
+          CDC log of pix_keys. Every column is the text pgoutput emitted.
+          Freshness is the newest commit_ts. Late files are still merged by
+          lsn_ord in the current-state models.
+        loaded_at_field: _loaded_at
+        freshness:
+          warn_after: {count: 2, period: day}
+          error_after: {count: 14, period: day}
+        meta:
+          external_location: "(select *, cast(commit_ts as timestamp) as _loaded_at from read_parquet(getvariable('pix_raw_app_pix_keys'), hive_partitioning=true, union_by_name=true))"
+        columns:
+          - name: op
+            description: insert, update, or delete for the committed image of this id.
+          - name: lsn
+            description: Commit end LSN in Postgres display form.
+          - name: lsn_ord
+            description: Fixed-width hex of the LSN. This is the sort key.
+          - name: commit_ts
+            description: Commit timestamp in UTC, text from the plugin.
+          - name: _loaded_at
+            description: commit_ts as a timestamp, added for DuckDB freshness.
+      - name: app_pix_transactions
+        description: CDC log of pix_transactions. Same envelope columns as app_pix_keys.
+        loaded_at_field: _loaded_at
+        freshness:
+          warn_after: {count: 2, period: day}
+          error_after: {count: 14, period: day}
+        meta:
+          external_location: "(select *, cast(commit_ts as timestamp) as _loaded_at from read_parquet(getvariable('pix_raw_app_pix_transactions'), hive_partitioning=true, union_by_name=true))"
+        columns:
+          - name: op
+            description: insert, update, or delete for the committed image of this id.
+          - name: lsn_ord
+            description: Fixed-width hex of the commit LSN.
+          - name: commit_ts
+            description: Commit timestamp in UTC.
+          - name: _loaded_at
+            description: commit_ts as a timestamp, added for DuckDB freshness.
+      - name: app_pix_disputes
+        description: CDC log of pix_disputes. Same envelope columns as app_pix_keys.
+        loaded_at_field: _loaded_at
+        freshness:
+          warn_after: {count: 2, period: day}
+          error_after: {count: 14, period: day}
+        meta:
+          external_location: "(select *, cast(commit_ts as timestamp) as _loaded_at from read_parquet(getvariable('pix_raw_app_pix_disputes'), hive_partitioning=true, union_by_name=true))"
+        columns:
+          - name: op
+            description: insert, update, or delete for the committed image of this id.
+          - name: lsn_ord
+            description: Fixed-width hex of the commit LSN.
+          - name: commit_ts
+            description: Commit timestamp in UTC.
+          - name: _loaded_at
+            description: commit_ts as a timestamp, added for DuckDB freshness.
