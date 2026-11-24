@@ -67,8 +67,8 @@ jobs:
           terraform init -backend=false -input=false
           terraform validate
       - name: tflint
-        run: tflint --recursive --config "$(pwd)/infra/terraform/.tflint.hcl"
         working-directory: infra/terraform
+        run: tflint --recursive --config "${PWD}/.tflint.hcl"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

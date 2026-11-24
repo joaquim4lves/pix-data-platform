@@ -18,12 +18,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - id: gate
+        env:
+          AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          BUDGET_ALERT_EMAIL: ${{ secrets.BUDGET_ALERT_EMAIL }}
+        run: |
+          if [ -n "$AWS_DEPLOY_ROLE_ARN" ] && [ -n "$TF_STATE_BUCKET" ] && [ -n "$AWS_REGION" ] && [ -n "$BUDGET_ALERT_EMAIL" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "AWS_DEPLOY_ROLE_ARN, TF_STATE_BUCKET, AWS_REGION, or BUDGET_ALERT_EMAIL is unset. Skipping plan/apply."
+          fi
+
   deploy:
-    if: >-
-      vars.AWS_DEPLOY_ROLE_ARN != '' &&
-      vars.TF_STATE_BUCKET != '' &&
-      vars.AWS_REGION != '' &&
-      secrets.BUDGET_ALERT_EMAIL != ''
+    needs: preflight
+    if: needs.preflight.outputs.run == 'true'
     runs-on: ubuntu-latest
     environment: dev
     permissions:
