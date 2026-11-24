@@ -1,4 +1,4 @@
-.PHONY: up down test lint ingest backfill ensure-bucket
+.PHONY: up down test lint ingest backfill ensure-bucket model dq
 
 PYTHON ?= python3
 VENV := .venv
@@ -35,3 +35,9 @@ backfill:
 
 ensure-bucket:
 	$(PY) -m ingestion.bcb ensure-bucket
+
+model:
+	$(PY) -m transform build
+
+dq:
+	$(PY) -m transform dq
