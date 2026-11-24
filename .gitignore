@@ -13,3 +13,17 @@ htmlcov/
 data/
 *.duckdb
 *.duckdb.wal
+
+# Terraform. Lock files are committed. State, plans, and Lambda zips are not.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*.auto.tfvars
+*.tfvars
+!*.tfvars.example
+backend.hcl
+infra/build/

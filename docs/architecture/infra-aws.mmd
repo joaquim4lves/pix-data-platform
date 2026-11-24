@@ -1,0 +1,62 @@
+---
+title: Infrastructure v2 — local Docker and a low-cost AWS account
+config:
+  theme: neutral
+  layout: elk
+  flowchart:
+    rankSpacing: 28
+    nodeSpacing: 24
+    htmlLabels: true
+    curve: basis
+  themeVariables:
+    lineColor: "#555555"
+    primaryTextColor: "#1a1a1a"
+---
+flowchart TB
+  bcb["BCB Olinda API — external"]
+  gh["GitHub — external"]
+  bcb ~~~ gh
+
+  subgraph local["Local — Docker on the dev machine"]
+    direction TB
+    pg[("PostgreSQL")]
+    cdc["Python pgoutput consumer"]
+    af["Airflow — local only"]
+    mb["Metabase — queries Athena"]
+    pg --> cdc
+    cdc ~~~ af
+    af ~~~ mb
+  end
+
+  subgraph aws["AWS account"]
+    direction TB
+    ev["EventBridge Scheduler"]
+    lam["Lambda — BCB ingest"]
+    s3b["S3 Parquet — raw/bcb/ENTITY/ano_mes=YYYYMM"]
+    ev -->|"schedule"| lam
+    lam --> s3b
+
+    sqs["SQS + DLQ"]
+    sink["Lambda — CDC sink"]
+    s3a["S3 Parquet — raw/app/TABLE/dt="]
+    sqs --> sink --> s3a
+
+    glue["Glue Data Catalog — partition projection, no crawlers"]
+    ath["Athena workgroup — bytes-scanned limit"]
+    s3b --> glue
+    s3a --> glue
+    glue --> ath
+
+    bud["AWS Budgets, USD 5 / month"]
+    cw["CloudWatch Logs"]
+    iam["IAM — least privilege"]
+    tf["Terraform remote state — S3"]
+    bud ~~~ cw
+    cw ~~~ iam
+    iam ~~~ tf
+  end
+
+  bcb -->|"HTTPS pull"| lam
+  cdc --> sqs
+  gh -->|"Actions via OIDC"| iam
+  mb -.->|"SQL"| ath

@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars and fill the two required values.
+# terraform.tfvars is gitignored.
+
+aws_region = "us-east-1"
+# aws_region = "sa-east-1"
+
+budget_alert_email = "you@example.com"
+state_bucket_arn   = "arn:aws:s3:::pix-data-platform-tfstate-ACCOUNT_ID"
+
+# github_repository          = "joaquim4lves/pix-data-platform"
+# existing_oidc_provider_arn = "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+# budget_limit_usd           = "5"

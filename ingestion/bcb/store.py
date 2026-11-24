@@ -42,15 +42,17 @@ class ObjectStore:
 
     @classmethod
     def from_settings(cls, settings: Settings) -> ObjectStore:
-        kwargs: dict[str, Any] = {
-            "region_name": settings.region,
-            "aws_access_key_id": settings.access_key_id,
-            "aws_secret_access_key": settings.secret_access_key,
-        }
+        kwargs: dict[str, Any] = {"region_name": settings.region}
         config_kwargs: dict[str, Any] = {"retries": {"max_attempts": 3, "mode": "standard"}}
         if settings.endpoint_url:
             kwargs["endpoint_url"] = settings.endpoint_url
             config_kwargs["s3"] = {"addressing_style": "path"}
+        if settings.access_key_id:
+            kwargs["aws_access_key_id"] = settings.access_key_id
+        if settings.secret_access_key:
+            kwargs["aws_secret_access_key"] = settings.secret_access_key
+        if settings.session_token:
+            kwargs["aws_session_token"] = settings.session_token
         kwargs["config"] = Config(**config_kwargs)
         return cls(boto3.client("s3", **kwargs), settings.bucket)
 

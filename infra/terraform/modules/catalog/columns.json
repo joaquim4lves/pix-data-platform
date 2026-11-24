@@ -1,0 +1,376 @@
+{
+  "bcb": [
+    {
+      "table": "estatisticas_transacoes_pix",
+      "folder": "EstatisticasTransacoesPix",
+      "description": "Olinda EstatisticasTransacoesPix. One Parquet file per ano_mes partition.",
+      "columns": [
+        {
+          "name": "AnoMes",
+          "type": "int"
+        },
+        {
+          "name": "PAG_PFPJ",
+          "type": "string"
+        },
+        {
+          "name": "REC_PFPJ",
+          "type": "string"
+        },
+        {
+          "name": "PAG_REGIAO",
+          "type": "string"
+        },
+        {
+          "name": "REC_REGIAO",
+          "type": "string"
+        },
+        {
+          "name": "PAG_IDADE",
+          "type": "string"
+        },
+        {
+          "name": "REC_IDADE",
+          "type": "string"
+        },
+        {
+          "name": "FORMAINICIACAO",
+          "type": "string"
+        },
+        {
+          "name": "NATUREZA",
+          "type": "string"
+        },
+        {
+          "name": "FINALIDADE",
+          "type": "string"
+        },
+        {
+          "name": "VALOR",
+          "type": "decimal(38,8)"
+        },
+        {
+          "name": "QUANTIDADE",
+          "type": "decimal(38,8)"
+        }
+      ]
+    },
+    {
+      "table": "transacoes_pix_municipio",
+      "folder": "TransacoesPixPorMunicipio",
+      "description": "Olinda TransacoesPixPorMunicipio, including the published N/D municipality.",
+      "columns": [
+        {
+          "name": "AnoMes",
+          "type": "int"
+        },
+        {
+          "name": "Municipio_Ibge",
+          "type": "int"
+        },
+        {
+          "name": "Municipio",
+          "type": "string"
+        },
+        {
+          "name": "Estado_Ibge",
+          "type": "int"
+        },
+        {
+          "name": "Estado",
+          "type": "string"
+        },
+        {
+          "name": "Sigla_Regiao",
+          "type": "string"
+        },
+        {
+          "name": "Regiao",
+          "type": "string"
+        },
+        {
+          "name": "VL_PagadorPF",
+          "type": "decimal(38,8)"
+        },
+        {
+          "name": "QT_PagadorPF",
+          "type": "decimal(38,8)"
+        },
+        {
+          "name": "VL_PagadorPJ",
+          "type": "decimal(38,8)"
+        },
+        {
+          "name": "QT_PagadorPJ",
+          "type": "decimal(38,8)"
+        },
+        {
+          "name": "VL_RecebedorPF",
+          "type": "decimal(38,8)"
+        },
+        {
+          "name": "QT_RecebedorPF",
+          "type": "decimal(38,8)"
+        },
+        {
+          "name": "VL_RecebedorPJ",
+          "type": "decimal(38,8)"
+        },
+        {
+          "name": "QT_RecebedorPJ",
+          "type": "decimal(38,8)"
+        },
+        {
+          "name": "QT_PES_PagadorPF",
+          "type": "decimal(38,8)"
+        },
+        {
+          "name": "QT_PES_PagadorPJ",
+          "type": "decimal(38,8)"
+        },
+        {
+          "name": "QT_PES_RecebedorPF",
+          "type": "decimal(38,8)"
+        },
+        {
+          "name": "QT_PES_RecebedorPJ",
+          "type": "decimal(38,8)"
+        }
+      ]
+    },
+    {
+      "table": "chaves_pix",
+      "folder": "ChavesPix",
+      "description": "Olinda ChavesPix stock snapshot. The Hive partition is ano_mes, not Data.",
+      "columns": [
+        {
+          "name": "Data",
+          "type": "date"
+        },
+        {
+          "name": "ISPB",
+          "type": "string"
+        },
+        {
+          "name": "Nome",
+          "type": "string"
+        },
+        {
+          "name": "NaturezaUsuario",
+          "type": "string"
+        },
+        {
+          "name": "TipoChave",
+          "type": "string"
+        },
+        {
+          "name": "qtdChaves",
+          "type": "bigint"
+        },
+        {
+          "name": "Segmento",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "app": [
+    {
+      "table": "app_pix_keys",
+      "folder": "pix_keys",
+      "description": "CDC log of pix_keys. Every column is the text pgoutput emitted.",
+      "columns": [
+        {
+          "name": "op",
+          "type": "string"
+        },
+        {
+          "name": "lsn",
+          "type": "string"
+        },
+        {
+          "name": "lsn_ord",
+          "type": "string"
+        },
+        {
+          "name": "commit_ts",
+          "type": "string"
+        },
+        {
+          "name": "pk",
+          "type": "string"
+        },
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "key_type",
+          "type": "string"
+        },
+        {
+          "name": "key_value",
+          "type": "string"
+        },
+        {
+          "name": "person_type",
+          "type": "string"
+        },
+        {
+          "name": "ispb",
+          "type": "string"
+        },
+        {
+          "name": "municipio_ibge",
+          "type": "string"
+        },
+        {
+          "name": "status",
+          "type": "string"
+        },
+        {
+          "name": "created_at",
+          "type": "string"
+        },
+        {
+          "name": "updated_at",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "table": "app_pix_transactions",
+      "folder": "pix_transactions",
+      "description": "CDC log of pix_transactions.",
+      "columns": [
+        {
+          "name": "op",
+          "type": "string"
+        },
+        {
+          "name": "lsn",
+          "type": "string"
+        },
+        {
+          "name": "lsn_ord",
+          "type": "string"
+        },
+        {
+          "name": "commit_ts",
+          "type": "string"
+        },
+        {
+          "name": "pk",
+          "type": "string"
+        },
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "end_to_end_id",
+          "type": "string"
+        },
+        {
+          "name": "amount",
+          "type": "string"
+        },
+        {
+          "name": "payer_ispb",
+          "type": "string"
+        },
+        {
+          "name": "receiver_ispb",
+          "type": "string"
+        },
+        {
+          "name": "municipio_ibge",
+          "type": "string"
+        },
+        {
+          "name": "forma_iniciacao",
+          "type": "string"
+        },
+        {
+          "name": "direction",
+          "type": "string"
+        },
+        {
+          "name": "status",
+          "type": "string"
+        },
+        {
+          "name": "occurred_at",
+          "type": "string"
+        },
+        {
+          "name": "created_at",
+          "type": "string"
+        },
+        {
+          "name": "updated_at",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "table": "app_pix_disputes",
+      "folder": "pix_disputes",
+      "description": "CDC log of pix_disputes.",
+      "columns": [
+        {
+          "name": "op",
+          "type": "string"
+        },
+        {
+          "name": "lsn",
+          "type": "string"
+        },
+        {
+          "name": "lsn_ord",
+          "type": "string"
+        },
+        {
+          "name": "commit_ts",
+          "type": "string"
+        },
+        {
+          "name": "pk",
+          "type": "string"
+        },
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "transaction_id",
+          "type": "string"
+        },
+        {
+          "name": "reason",
+          "type": "string"
+        },
+        {
+          "name": "status",
+          "type": "string"
+        },
+        {
+          "name": "opened_at",
+          "type": "string"
+        },
+        {
+          "name": "resolved_at",
+          "type": "string"
+        },
+        {
+          "name": "created_at",
+          "type": "string"
+        },
+        {
+          "name": "updated_at",
+          "type": "string"
+        }
+      ]
+    }
+  ]
+}

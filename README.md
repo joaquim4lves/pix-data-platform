@@ -2,7 +2,7 @@
 
 Senior backend engineer and tech lead with 10+ years shipping production APIs in Python and Node. This repository is an end-to-end data platform I designed and built: public PIX payments data from Banco Central do Brasil lands in S3, is transformed and tested in dbt, orchestrated in Airflow, and explored in Metabase, with AWS infrastructure in Terraform. It applies production habits (idempotent ingestion, data tests, retries, freshness checks, infrastructure as code) to an analytical stack in the payments domain.
 
-v0.1 is the ingestion slice: public PIX statistics from the BCB Olinda API land as Parquet partitions on S3. LocalStack stands in for S3 so the slice runs without an AWS account. v0.2 models that raw zone as a star schema in DuckDB. v0.3 adds a simulated PSP on Postgres and captures its changes with logical replication. Later releases add AWS, dbt (a port of these models), Airflow, and Metabase.
+v0.1 is the ingestion slice: public PIX statistics from the BCB Olinda API land as Parquet partitions on S3. LocalStack stands in for S3 so the slice runs without an AWS account. v0.2 models that raw zone as a star schema in DuckDB. v0.3 adds a simulated PSP on Postgres and captures its changes with logical replication. v0.4 is the low-cost AWS account (S3, Lambda, SQS, Glue, Athena). Postgres, Airflow, and Metabase stay on the laptop. Later releases add dbt and the Airflow DAGs.
 
 ```mermaid
 flowchart LR
@@ -109,6 +109,92 @@ make up
 make e2e
 ```
 
+## v0.4 scope
+
+Real S3 replaces LocalStack when `AWS_ENDPOINT_URL` is empty or `aws`. The account is the low-cost shape in [ADR-004](docs/adr/ADR-004.md): S3, two Lambdas, SQS, Glue partition projection, Athena, a USD 5 budget, and a GitHub OIDC deploy role. There is no EC2 instance, RDS database, load balancer, or NAT gateway. Postgres, the pgoutput consumer, Airflow, and Metabase stay on the laptop. Metabase is not installed here; the dotted SQL edge is the path a local Metabase uses to read Athena.
+
+```mermaid
+---
+title: Infrastructure v2 — local Docker and a low-cost AWS account
+config:
+  theme: neutral
+  layout: elk
+  flowchart:
+    rankSpacing: 28
+    nodeSpacing: 24
+    htmlLabels: true
+    curve: basis
+  themeVariables:
+    lineColor: "#555555"
+    primaryTextColor: "#1a1a1a"
+---
+flowchart TB
+  bcb["BCB Olinda API — external"]
+  gh["GitHub — external"]
+  bcb ~~~ gh
+
+  subgraph local["Local — Docker on the dev machine"]
+    direction TB
+    pg[("PostgreSQL")]
+    cdc["Python pgoutput consumer"]
+    af["Airflow — local only"]
+    mb["Metabase — queries Athena"]
+    pg --> cdc
+    cdc ~~~ af
+    af ~~~ mb
+  end
+
+  subgraph aws["AWS account"]
+    direction TB
+    ev["EventBridge Scheduler"]
+    lam["Lambda — BCB ingest"]
+    s3b["S3 Parquet — raw/bcb/ENTITY/ano_mes=YYYYMM"]
+    ev -->|"schedule"| lam
+    lam --> s3b
+
+    sqs["SQS + DLQ"]
+    sink["Lambda — CDC sink"]
+    s3a["S3 Parquet — raw/app/TABLE/dt="]
+    sqs --> sink --> s3a
+
+    glue["Glue Data Catalog — partition projection, no crawlers"]
+    ath["Athena workgroup — bytes-scanned limit"]
+    s3b --> glue
+    s3a --> glue
+    glue --> ath
+
+    bud["AWS Budgets, USD 5 / month"]
+    cw["CloudWatch Logs"]
+    iam["IAM — least privilege"]
+    tf["Terraform remote state — S3"]
+    bud ~~~ cw
+    cw ~~~ iam
+    iam ~~~ tf
+  end
+
+  bcb -->|"HTTPS pull"| lam
+  cdc --> sqs
+  gh -->|"Actions via OIDC"| iam
+  mb -.->|"SQL"| ath
+```
+
+The dev root is `infra/terraform/envs/dev`. CI runs `terraform fmt`, `init -backend=false`, `validate`, tflint, and checkov. It does not apply. A manual workflow runs plan or apply only when the deploy role, state bucket, region, and budget email are set. Steps are in [docs/runbooks/aws-dev.md](docs/runbooks/aws-dev.md). The cost estimate is [docs/cost-estimate.md](docs/cost-estimate.md).
+
+In this release:
+
+- Data lake bucket with `raw/`, `curated/`, and `athena-results/`, SSE-S3, public access blocked, and lifecycle rules
+- BCB ingest Lambda packaged from `ingestion/`, scheduled daily and monthly in `America/Sao_Paulo`
+- SQS queue, dead-letter queue, and CDC sink Lambda. The event source mapping uses `ReportBatchItemFailures`
+- Glue databases and external tables with partition projection, and no crawlers
+- Athena workgroup with an enforced 1 GiB bytes-scanned cutoff
+- Account-wide budget of USD 5. The inbox is `budget_alert_email`
+- 14-day CloudWatch log retention and least-privilege IAM
+- GitHub Actions OIDC provider and a deploy role scoped to this repository's deploy workflow
+- Remote state in S3 with Terraform's native lockfile, plus a bootstrap root
+- `transform/athena/views.sql`, Athena views generated from the DuckDB models
+
+The default region is `us-east-1` because that is where the unit prices and the free tier are cheapest. `aws_region = "sa-east-1"` keeps the buckets in São Paulo. A quiet month should cost about zero dollars. Read the cost table before leaving a stack applied.
+
 ## Ingestion behavior
 
 A run asks Olinda for each month in the window with `$filter`, validates every row, and writes one Parquet file per month:
@@ -128,9 +214,9 @@ If a row breaks the contract, that entity stops, the raw response is written to 
 | Release | What lands |
 | --- | --- |
 | v0.1 | Foundation and incremental BCB PIX ingestion |
-| v0.2 | This slice: star schema in DuckDB over the raw Parquet |
-| v0.3 | This slice: FastAPI + Postgres payments app, CDC via `pgoutput` |
-| v0.4 | Terraform on AWS. Real S3 replaces LocalStack; the client already switches on `AWS_ENDPOINT_URL` |
+| v0.2 | Star schema in DuckDB over the raw Parquet |
+| v0.3 | FastAPI + Postgres payments app, CDC via `pgoutput` |
+| v0.4 | This slice: low-cost serverless AWS. Postgres and Airflow stay in Docker |
 | v0.5 | dbt models and tests |
 | v0.6 | Airflow orchestration |
 | v1.0 | Metabase and the final README |
@@ -148,7 +234,12 @@ transform/sql/marts/           dimensions and facts
 transform/sql/checks/          data-quality queries (one row per violation)
 docs/queries/                  example analytical questions
 docs/spike-bcb.md              what the live Olinda service actually does
-docs/adr/                      architecture decisions
+docs/adr/                      architecture decisions, including ADR-004
+docs/architecture/             infrastructure diagram
+docs/runbooks/                 deploy and destroy
+docs/cost-estimate.md          expected AWS bill
 docs/career/                   positioning kit, not part of the pipeline
+infra/terraform/               modules, bootstrap, and envs/dev
+transform/athena/views.sql     Athena views generated from the models
 tests/                         unit tests, fixture Parquet, LocalStack integration
 ```

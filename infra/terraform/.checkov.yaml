@@ -1,0 +1,14 @@
+# Skips that contradict the low-cost decisions in docs/adr/ADR-004.md.
+# SSE-S3, no cross-region replication, 14-day logs, no scheduler CMK,
+# and no S3 event notifications. The deploy-role wildcards are skipped
+# on the policy document itself, not here, so a Lambda policy stays checked.
+compact: true
+quiet: false
+framework:
+  - terraform
+skip-check:
+  - CKV_AWS_144
+  - CKV_AWS_145
+  - CKV_AWS_297
+  - CKV_AWS_338
+  - CKV2_AWS_62

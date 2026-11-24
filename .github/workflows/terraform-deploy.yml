@@ -1,0 +1,96 @@
+name: terraform-deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: plan, or apply from main
+        type: choice
+        options:
+          - plan
+          - apply
+        default: plan
+
+# Skipped unless the repository variables and the budget email secret are set.
+# A public fork cannot satisfy that, and the OIDC role also requires the dev environment.
+concurrency:
+  group: terraform-dev
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - id: gate
+        env:
+          AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          BUDGET_ALERT_EMAIL: ${{ secrets.BUDGET_ALERT_EMAIL }}
+        run: |
+          if [ -n "$AWS_DEPLOY_ROLE_ARN" ] && [ -n "$TF_STATE_BUCKET" ] && [ -n "$AWS_REGION" ] && [ -n "$BUDGET_ALERT_EMAIL" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "AWS_DEPLOY_ROLE_ARN, TF_STATE_BUCKET, AWS_REGION, or BUDGET_ALERT_EMAIL is unset. Skipping plan/apply."
+          fi
+
+  deploy:
+    needs: preflight
+    if: needs.preflight.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      id-token: write
+      contents: read
+    defaults:
+      run:
+        working-directory: infra/terraform/envs/dev
+    env:
+      TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+      TF_VAR_budget_alert_email: ${{ secrets.BUDGET_ALERT_EMAIL }}
+      TF_VAR_state_bucket_arn: arn:aws:s3:::${{ vars.TF_STATE_BUCKET }}
+      TF_VAR_github_repository: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply only from main
+        if: inputs.action == 'apply' && github.ref != 'refs/heads/main'
+        working-directory: .
+        run: |
+          echo "Apply runs only from main. Dispatch plan from this branch, or run apply from main."
+          exit 1
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build Lambda packages
+        working-directory: .
+        run: bash infra/scripts/build_lambdas.sh
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Init
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}" \
+            -backend-config="use_lockfile=true" \
+            -backend-config="encrypt=true"
+
+      - name: Plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Apply
+        if: inputs.action == 'apply'
+        run: terraform apply -input=false tfplan
