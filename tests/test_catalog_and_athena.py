@@ -34,8 +34,8 @@ def test_athena_views_match_the_renderer_and_avoid_raw_paths() -> None:
 
 def test_infra_diagram_is_embedded_with_the_athena_edge() -> None:
     diagram = DIAGRAM.read_text(encoding="utf-8")
-    assert 'mb -.->|"SQL"| ath' in diagram
-    assert "Metabase — queries Athena" in diagram
+    assert 'mb -.->|"Athena path, not applied"| ath' in diagram
+    assert "Metabase — DuckDB marts, local only" in diagram
     fence = f"```mermaid\n{diagram}```"
     for path in EMBEDDED:
         text = path.read_text(encoding="utf-8")

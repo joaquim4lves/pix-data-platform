@@ -1,5 +1,5 @@
 name: pix_data_platform
-version: "0.5.0"
+version: "1.0.0"
 config-version: 2
 profile: pix_data_platform
 
@@ -12,6 +12,11 @@ clean-targets: ["target", "dbt_packages", "logs"]
 
 flags:
   send_anonymous_usage_stats: false
+
+# Empty string means the São Paulo clock (UTC−3, no DST since 2019).
+# make metabase-provision sets 2026-11-25 so the seeded extract stays put.
+vars:
+  pix_as_of_date: ""
 
 models:
   pix_data_platform:

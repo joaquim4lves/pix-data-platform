@@ -16,7 +16,15 @@ from pathlib import Path
 from typing import Any
 
 from dbt.adapters.duckdb.plugins import BasePlugin
-from ingestion.bcb.entities import CHAVES, MUNICIPIO, TRANSACOES, EntitySpec
+from ingestion.bcb.entities import (
+    CHAVES,
+    CNAE,
+    FRAUDES,
+    MUNICIPIO,
+    TRANSACOES,
+    USUARIOS,
+    EntitySpec,
+)
 
 from transform.sources import (
     S3Raw,
@@ -34,6 +42,9 @@ _BCB: tuple[tuple[str, EntitySpec], ...] = (
     ("estatisticas_transacoes_pix", TRANSACOES),
     ("transacoes_pix_municipio", MUNICIPIO),
     ("chaves_pix", CHAVES),
+    ("estatisticas_fraudes_pix", FRAUDES),
+    ("cnae_porte_recebedor", CNAE),
+    ("pix_usuarios_dict", USUARIOS),
 )
 
 _APP: tuple[tuple[str, tuple[str, ...]], ...] = (

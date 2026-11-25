@@ -63,6 +63,46 @@ sources:
             description: Institution identifier as Olinda sent it, text so leading zeros survive.
           - name: _loaded_at
             description: First day of the ano_mes partition, added for DuckDB freshness.
+      - name: estatisticas_fraudes_pix
+        description: >
+          Olinda EstatisticasFraudesPix, one national row per published
+          AnoMes. The v1.0 extract is seeded. Live ingest does not load it.
+          There is no geography column.
+        meta:
+          external_location: "(select *, cast(concat(substr(lpad(cast(ano_mes as varchar), 6, '0'), 1, 4), '-', substr(lpad(cast(ano_mes as varchar), 6, '0'), 5, 2), '-01') as timestamp) as _loaded_at from read_parquet(getvariable('pix_raw_estatisticas_fraudes_pix'), hive_partitioning=true, union_by_name=true))"
+        columns:
+          - name: AnoMes
+            description: Published month as YYYYMM.
+          - name: PercentualdeDevolucao
+            description: Return percentage as Olinda published it. Not recomputed.
+          - name: Qtdecontestacoesaceitasacada100mil
+            description: Accepted contests per 100 thousand PIX, as published.
+      - name: cnae_porte_recebedor
+        description: >
+          Olinda CnaePorteRecebedor. vllanliq and qtlanliq are the settled
+          measures the dashboards use. vlcompra, vldinespec and mesmatit
+          are in the file and are not on the v1.0 mart.
+        meta:
+          external_location: "(select *, cast(concat(substr(lpad(cast(ano_mes as varchar), 6, '0'), 1, 4), '-', substr(lpad(cast(ano_mes as varchar), 6, '0'), 5, 2), '-01') as timestamp) as _loaded_at from read_parquet(getvariable('pix_raw_cnae_porte_recebedor'), hive_partitioning=true, union_by_name=true))"
+        columns:
+          - name: AnoMes
+            description: Published month as YYYYMM.
+          - name: vllanliq
+            description: Settled value for this receiver grain.
+          - name: qtlanliq
+            description: Settled payment count for this receiver grain.
+      - name: pix_usuarios_dict
+        description: >
+          Olinda PixUsuariosCadastradosDICT, a month-end stock of registered
+          users. Not a key count. The v1.0 extract is seeded. The Hive
+          partition is ano_mes. DataGraficosPix is the snapshot date.
+        meta:
+          external_location: "(select *, cast(concat(substr(lpad(cast(ano_mes as varchar), 6, '0'), 1, 4), '-', substr(lpad(cast(ano_mes as varchar), 6, '0'), 5, 2), '-01') as timestamp) as _loaded_at from read_parquet(getvariable('pix_raw_pix_usuarios_dict'), hive_partitioning=true, union_by_name=true))"
+        columns:
+          - name: DataGraficosPix
+            description: Snapshot date, the last day of the month.
+          - name: qtdUsuariosCadastradosDICTTotal
+            description: Published total of registered DICT users.
       - name: app_pix_keys
         description: >
           CDC log of pix_keys. Every column is the text pgoutput emitted.

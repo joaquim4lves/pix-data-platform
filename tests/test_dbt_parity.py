@@ -85,6 +85,23 @@ def _fetch(
     return [tuple(_norm(value) for value in row) for row in rows]
 
 
+# v1.0 dashboard relations have no twin in transform/sql. The parity
+# oracle still covers every v0.2–v0.5 model. These names are dbt-only.
+DBT_ONLY_RELATIONS = {
+    ("staging", "stg_cnae_porte_recebedor"),
+    ("staging", "stg_estatisticas_fraudes_pix"),
+    ("staging", "stg_pix_usuarios_dict"),
+    ("marts", "fct_pix_dict_users"),
+    ("marts", "fct_pix_keys_stock"),
+    ("marts", "fct_pix_med"),
+    ("marts", "fct_pix_med_vs_spi"),
+    ("marts", "fct_pix_municipality"),
+    ("marts", "fct_pix_publication"),
+    ("marts", "fct_pix_receiver_profile"),
+    ("marts", "fct_pix_transactions"),
+}
+
+
 def _compare(legacy: Path, built: Path, raw: Path) -> None:
     os.environ["PIX_RAW_SOURCE"] = "local"
     os.environ["PIX_RAW_ROOT"] = str(raw)
@@ -92,8 +109,11 @@ def _compare(legacy: Path, built: Path, raw: Path) -> None:
     right = duckdb.connect(str(built))
     Plugin(name="raw_zone", plugin_config={}).configure_connection(right)
     try:
-        assert _tables(left) == _tables(right)
-        for schema, table in _tables(left):
+        left_tables = _tables(left)
+        right_tables = _tables(right)
+        assert set(right_tables) - set(left_tables) == DBT_ONLY_RELATIONS
+        assert set(left_tables) - set(right_tables) == set()
+        for schema, table in left_tables:
             legacy_columns = _columns(left, schema, table)
             dbt_columns = _columns(right, schema, table)
             extra = [name for name in dbt_columns if name not in legacy_columns]
