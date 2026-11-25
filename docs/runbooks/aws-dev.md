@@ -1,6 +1,6 @@
 # Deploy and destroy the dev account
 
-The stack is `infra/terraform`. It does not create an EC2 instance, an RDS database, a load balancer, or a NAT gateway. Postgres, the pgoutput consumer, Airflow, and Metabase stay in Docker. Airflow is the compose profile in [airflow-local.md](airflow-local.md), not MWAA. Metabase is not installed by this runbook. The dotted edge in the diagram is the SQL path from a local Metabase to the Athena workgroup.
+The stack is `infra/terraform`. It does not create an EC2 instance, an RDS database, a load balancer, or a NAT gateway. Postgres, the pgoutput consumer, Airflow, and Metabase stay in Docker. Airflow is the compose profile in [airflow-local.md](airflow-local.md), not MWAA. Metabase is not installed by this runbook. The dotted edge is the Athena path a local Metabase would use. It has not been applied. v1.0 Metabase reads DuckDB. See [metabase-local.md](metabase-local.md).
 
 ```mermaid
 ---
@@ -27,7 +27,7 @@ flowchart TB
     pg[("PostgreSQL")]
     cdc["Python pgoutput consumer"]
     af["Airflow — local only"]
-    mb["Metabase — queries Athena"]
+    mb["Metabase — DuckDB marts, local only"]
     pg --> cdc
     cdc ~~~ af
     af ~~~ mb
@@ -64,7 +64,7 @@ flowchart TB
   bcb -->|"HTTPS pull"| lam
   cdc --> sqs
   gh -->|"Actions via OIDC"| iam
-  mb -.->|"SQL"| ath
+  mb -.->|"Athena path, not applied"| ath
 ```
 
 Nothing below runs `terraform apply` for you. CI only formats, initialises without a backend, validates, and lints. Do not apply until the budget email is an inbox you read.

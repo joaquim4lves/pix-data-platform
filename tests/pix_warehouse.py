@@ -4,9 +4,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ingestion.bcb.entities import CHAVES, MUNICIPIO, TRANSACOES
+from ingestion.bcb.entities import CHAVES, CNAE, FRAUDES, MUNICIPIO, TRANSACOES, USUARIOS
 from tests.raw_files import write_partition
-from tests.samples import chaves_row, municipio_row, tx_row
+from tests.samples import (
+    chaves_row,
+    cnae_row,
+    dict_users_row,
+    fraud_row,
+    municipio_row,
+    tx_row,
+)
 from transform.build import build_warehouse
 from transform.sources import LocalRaw
 
@@ -127,6 +134,44 @@ def write_sample_raw(root: Path) -> None:
             ),
         ],
     )
+    write_partition(root, FRAUDES, 202609, [fraud_row()])
+    write_partition(
+        root,
+        CNAE,
+        202610,
+        [
+            cnae_row(),
+            cnae_row(
+                porte="Pequeno Porte",
+                mei="N",
+                qtlanliq="10",
+                vllanliq="800.00",
+                cnssecao="Outros",
+            ),
+            cnae_row(
+                tipopessoa="PF",
+                porte="Nao informado",
+                mei="Outros",
+                cnssecao="Pessoa fisica",
+                qtlanliq="5",
+                vllanliq="100.00",
+            ),
+        ],
+    )
+    write_partition(
+        root,
+        USUARIOS,
+        202609,
+        [
+            dict_users_row(
+                DataGraficosPix="2026-09-30",
+                qtdUsuariosPessoaFisica=90,
+                qtdUsuariosPessoaJuridica=20,
+                qtdUsuariosCadastradosDICTTotal=110,
+            )
+        ],
+    )
+    write_partition(root, USUARIOS, 202610, [dict_users_row()])
 
 
 def build_sample(directory: Path) -> Path:

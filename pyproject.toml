@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pix-data-platform"
-version = "0.6.0"
-description = "PIX open data from Banco Central do Brasil, a dbt star schema on DuckDB, local Airflow, CDC from a simulated PSP, and low-cost AWS Terraform"
+version = "1.0.0"
+description = "PIX open data from Banco Central do Brasil, dbt on DuckDB, local Airflow, Metabase dashboards, CDC, and low-cost AWS Terraform"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.14",
   "boto3>=1.35",
-  "duckdb>=1.1",
+  "duckdb>=1.5.6,<1.6",
   "fastapi>=0.115",
   "httpx>=0.27",
   "psycopg[binary]>=3.2",
@@ -23,9 +23,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "dbt-athena-community>=1.9,<2",
-  "dbt-core>=1.8,<2",
-  "dbt-duckdb>=1.9,<2",
+  "dbt-athena-community>=1.9,<1.13",
+  "dbt-core>=1.10,<1.13",
+  "dbt-duckdb>=1.9,<1.13",
   "moto[s3]>=5.0",
   "pytest>=8.3",
   "ruff>=0.7",
@@ -36,10 +36,11 @@ airflow = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["ingestion*", "transform*", "payments*", "cdc*", "orchestration*"]
+include = ["ingestion*", "transform*", "payments*", "cdc*", "orchestration*", "dashboards*"]
 
 [tool.setuptools.package-data]
 transform = ["sql/**/*.sql"]
+dashboards = ["metabase/collection.json", "metabase/sql/*.sql"]
 payments = ["alembic.ini", "migrations/env.py", "migrations/script.py.mako", "migrations/versions/*.py"]
 
 [tool.pytest.ini_options]
@@ -53,7 +54,7 @@ addopts = "-q --tb=short"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["ingestion", "transform", "payments", "cdc", "orchestration", "tests"]
+src = ["ingestion", "transform", "payments", "cdc", "orchestration", "dashboards", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

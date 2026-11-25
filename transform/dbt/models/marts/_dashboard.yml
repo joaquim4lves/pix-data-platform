@@ -1,0 +1,152 @@
+version: 2
+models:
+  - name: fct_pix_transactions
+    description: >
+      SPI transactions at the published cube grain, with chart labels for the
+      Metabase dashboards. is_complete_month is false for the São Paulo
+      calendar month still in progress. valor and quantidade add to the
+      national month. Payer and receiver are not added together.
+    columns:
+      - name: ano_mes
+        description: Year and month as YYYYMM.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_tempo')
+                field: ano_mes
+      - name: month_start
+        description: First day of ano_mes, for the dashboard period filter.
+        tests: [not_null]
+      - name: is_complete_month
+        description: True when ano_mes is before the as-of month. The open calendar month is never the default.
+        tests: [not_null]
+      - name: forma_iniciacao_label
+        description: >
+          Short English gloss. AUTO, APDN and APES are the code only.
+          Nao disponivel is Unstated / other with the raw token.
+      - name: valor
+        description: Settled amount for this grain. Adds to the national month.
+        tests:
+          - not_null
+      - name: quantidade
+        description: Settled payment count for this grain. Adds to the national month.
+        tests:
+          - not_null
+  - name: fct_pix_municipality
+    description: >
+      Municipality month with payer and receiver measures kept apart.
+      Distinct people are not additive across municipalities. The N/D row
+      is Unstated / other and keeps the raw token.
+    columns:
+      - name: ano_mes
+        description: Year and month as YYYYMM.
+        tests:
+          - not_null
+      - name: municipio_ibge
+        description: IBGE municipality code, or 0 for the published N/D row.
+        tests: [not_null]
+      - name: valor_pagador
+        description: Payer-side value, PF plus PJ. Not added to valor_recebedor.
+      - name: valor_recebedor
+        description: Receiver-side value, PF plus PJ. Not added to valor_pagador.
+      - name: pessoas_recebedor
+        description: Distinct receivers in this municipality-month. Do not sum across municipalities.
+  - name: fct_pix_keys_stock
+    description: >
+      Month-end stock of PIX keys by institution, person type and key type.
+      Key counts are not user counts and not payment volume.
+    columns:
+      - name: ano_mes
+        description: Snapshot month as YYYYMM.
+        tests: [not_null]
+      - name: ispb
+        description: Institution identifier, left-padded to 8 characters.
+        tests: [not_null]
+      - name: quantidade_chaves
+        description: Key stock on this snapshot row. Not a user count.
+        tests: [not_null]
+  - name: fct_pix_dict_users
+    description: >
+      Month-end stock of users registered in DICT. usuarios_total is the
+      published total. This is not a key stock.
+    columns:
+      - name: ano_mes
+        description: Snapshot month as YYYYMM.
+        tests: [not_null, unique]
+      - name: usuarios_total
+        description: Published qtdUsuariosCadastradosDICTTotal.
+        tests: [not_null]
+      - name: usuarios_pf
+        description: Registered natural persons.
+      - name: usuarios_pj
+        description: Registered legal persons.
+  - name: fct_pix_receiver_profile
+    description: >
+      Settled value and payment count by receiver person type, CNAE section,
+      porte and MEI. vlcompra, vldinespec and mesmatit are not on this mart.
+      Pessoa fisica and Outros remain their own section labels.
+    columns:
+      - name: ano_mes
+        description: Year and month as YYYYMM.
+        tests: [not_null]
+      - name: valor_liquidado
+        description: Sum of vllanliq at this grain.
+        tests: [not_null]
+      - name: quantidade_liquidada
+        description: Sum of qtlanliq at this grain. Average ticket divides value by this count.
+        tests: [not_null]
+      - name: cnae_secao_label
+        description: Section label. Pessoa fisica and Outros are not folded into Unstated.
+  - name: fct_pix_med
+    description: >
+      National MED statistics, one row per published month from 202201.
+      Missing months are absent, not zero. PercentualdeDevolucao and the
+      per-100k rate are the published figures. Precautionary blocks are omitted.
+    columns:
+      - name: ano_mes
+        description: Published month as YYYYMM.
+        tests: [not_null, unique]
+      - name: percentual_devolucao
+        description: PercentualdeDevolucao as published. Not recomputed.
+        tests: [not_null]
+      - name: aceitas_por_100mil
+        description: Qtdecontestacoesaceitasacada100mil as published. Not recomputed.
+        tests: [not_null]
+      - name: quantidade_contestada
+        description: PIX contested via MED. Not a count of fraud cases.
+      - name: valor_aceito
+        description: ValorPixcontestadosaceitos, the numerator of the SPI ratio.
+  - name: fct_pix_med_vs_spi
+    description: >
+      One row per AnoMes where a MED row and an SPI total both exist, from
+      202201. ratio_aceito_sobre_spi is valor_aceito divided by the sum of
+      SPI settled value. It is not an official BCB rate and it is not
+      PercentualdeDevolucao. The denominator is SPI-only.
+    columns:
+      - name: ano_mes
+        description: Year and month as YYYYMM. Grain of this model.
+        tests: [not_null, unique]
+      - name: valor_aceito
+        description: MED accepted contested value for the month.
+        tests: [not_null]
+      - name: spi_valor
+        description: Sum of fct_pix_transactions.valor for the same month.
+        tests: [not_null]
+      - name: ratio_aceito_sobre_spi
+        description: valor_aceito / spi_valor. Portfolio ratio, not a BCB publication.
+        tests: [not_null]
+      - name: caption
+        description: Required disclaimer. The denominator is SPI-only and the ratio is not official.
+  - name: fct_pix_publication
+    description: >
+      One row. Names the latest complete transaction month and the latest
+      MED month, plus the banner and the missing-month sentence.
+    columns:
+      - name: banner
+        description: National MED banner, including the latest published month.
+        tests: [not_null]
+      - name: gap_note
+        description: >
+          Null when MED is as current as the latest complete transaction
+          month. Otherwise names the unpublished month and the last MED month.
