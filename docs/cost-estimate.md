@@ -19,6 +19,8 @@ The workload is three monthly public extracts, a small CDC log from a laptop, on
 | NAT gateway | Not created | about $0.045 / hour plus data | about $32 avoided |
 | Application load balancer | Not created | about $0.0225 / hour plus LCUs | about $16 avoided |
 | RDS or EC2 | Not created | always-on instance hours | avoided |
+| MWAA | Not created. Airflow is the compose profile on the laptop | smallest environment is billed per hour | on the order of a few hundred dollars a month avoided |
+| Local Airflow | Docker profile `airflow`, not in the account | no AWS charge | $0 |
 | KMS customer-managed keys | Not created. SSE-S3 and SQS-managed keys instead | $1 / key-month plus requests | avoided |
 | Data transfer in | Olinda responses into Lambda | inbound is free | $0 |
 

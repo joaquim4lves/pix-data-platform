@@ -1,4 +1,6 @@
-.PHONY: up down test lint ingest backfill ensure-bucket model dq migrate api load cdc apply e2e tf-check dbt-deps dbt-build dbt-docs
+.PHONY: up down test lint ingest backfill ensure-bucket model dq migrate api load cdc apply e2e tf-check dbt-deps dbt-build dbt-docs airflow-up airflow-down airflow-test
+
+AIRFLOW_SERVICES := airflow-apiserver airflow-scheduler airflow-dag-processor
 
 DBT_PROJECT := transform/dbt
 DBT := $(PY) -m transform.dbt_main --project-dir $(DBT_PROJECT) --profiles-dir $(DBT_PROJECT)
@@ -53,6 +55,17 @@ dbt-build:
 
 dbt-docs:
 	$(DBT) docs generate
+
+airflow-up:
+	docker compose --profile airflow up -d --build --wait airflow-apiserver airflow-scheduler airflow-dag-processor
+
+airflow-down:
+	docker compose stop $(AIRFLOW_SERVICES)
+	docker compose rm -f $(AIRFLOW_SERVICES) airflow-init
+
+airflow-test:
+	$(PY) -c "import airflow, cosmos"
+	$(PY) -m pytest tests/test_orchestration.py tests/test_airflow_dags.py
 
 migrate:
 	$(PY) -m payments migrate
