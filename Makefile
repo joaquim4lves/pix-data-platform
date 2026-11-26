@@ -1,9 +1,11 @@
-.PHONY: up down test lint ingest backfill ensure-bucket model dq migrate api load cdc apply e2e tf-check dbt-deps dbt-build dbt-docs airflow-up airflow-down airflow-test
+.PHONY: up down test lint ingest backfill ensure-bucket model dq migrate api load cdc apply e2e tf-check dbt-deps dbt-build dbt-docs airflow-up airflow-down airflow-test metabase-up metabase-down metabase-provision metabase-validate
 
 AIRFLOW_SERVICES := airflow-apiserver airflow-scheduler airflow-dag-processor
 
 DBT_PROJECT := transform/dbt
-DBT := $(PY) -m transform.dbt_main --project-dir $(DBT_PROJECT) --profiles-dir $(DBT_PROJECT)
+# Flags follow the subcommand. dbt 1.12 accepts --project-dir there.
+DBT := $(PY) -m transform.dbt_main
+DBT_FLAGS := --project-dir $(DBT_PROJECT) --profiles-dir $(DBT_PROJECT)
 
 PYTHON ?= python3
 VENV := .venv
@@ -48,13 +50,13 @@ dq:
 	$(PY) -m transform dq
 
 dbt-deps:
-	$(DBT) deps
+	$(DBT) deps $(DBT_FLAGS)
 
 dbt-build:
-	$(DBT) build
+	$(DBT) build $(DBT_FLAGS)
 
 dbt-docs:
-	$(DBT) docs generate
+	$(DBT) docs generate $(DBT_FLAGS)
 
 airflow-up:
 	docker compose --profile airflow up -d --build --wait airflow-apiserver airflow-scheduler airflow-dag-processor
@@ -91,3 +93,17 @@ tf-check:
 	terraform -chdir=infra/terraform/bootstrap validate
 	terraform -chdir=infra/terraform/envs/dev init -backend=false -input=false
 	terraform -chdir=infra/terraform/envs/dev validate
+
+metabase-up:
+	mkdir -p data/metabase
+	chmod 777 data data/metabase
+	docker compose --profile metabase up -d --wait metabase
+
+metabase-down:
+	docker compose --profile metabase stop metabase
+
+metabase-provision:
+	PIX_AS_OF_DATE=$${PIX_AS_OF_DATE:-2026-11-25} $(PY) -m dashboards.provision
+
+metabase-validate:
+	$(PY) -m dashboards.validate

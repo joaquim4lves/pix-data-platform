@@ -1,0 +1,2072 @@
+{
+  "version": 1,
+  "collection": "PIX Open Data",
+  "questions_collection": "source questions",
+  "database_name": "PIX marts",
+  "duckdb_path": "/data/pix.duckdb",
+  "footer": "Source: Banco Central do Brasil, Estat\u00edsticas do Pix. Transaction figures are SPI-settled only and exclude Pix settled on the participant's own books.",
+  "empty_state": "No data for this period.",
+  "questions": [
+    {
+      "key": "q1_tx_count",
+      "name": "How many SPI payments settled last complete month?",
+      "description": "Sum of QUANTIDADE. The reference month is the latest complete month of EstatisticasTransacoesPix.",
+      "display": "smartscalar",
+      "sql": "q1_tx_count.sql",
+      "tags": [],
+      "viz": {
+        "scalar.field": "transactions",
+        "column_settings": {
+          "[\"name\",\"transactions\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q1_tx_value",
+      "name": "What value settled last complete month?",
+      "description": "Sum of VALOR. SPI only.",
+      "display": "smartscalar",
+      "sql": "q1_tx_value.sql",
+      "tags": [],
+      "viz": {
+        "scalar.field": "settled_value",
+        "column_settings": {
+          "[\"name\",\"settled_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q1_ticket",
+      "name": "What was the average ticket last complete month?",
+      "description": "sum(VALOR) / sum(QUANTIDADE) at the month grain.",
+      "display": "smartscalar",
+      "sql": "q1_ticket.sql",
+      "tags": [],
+      "viz": {
+        "scalar.field": "average_ticket",
+        "column_settings": {
+          "[\"name\",\"average_ticket\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q1_dict_users",
+      "name": "How many DICT users were registered?",
+      "description": "qtdUsuariosCadastradosDICTTotal for the latest complete snapshot. PF and PJ are the subtitle, not key counts.",
+      "display": "object",
+      "sql": "q1_dict_users.sql",
+      "tags": [],
+      "viz": {
+        "column_settings": {
+          "[\"name\",\"dict_users\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          },
+          "[\"name\",\"pessoa_fisica\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          },
+          "[\"name\",\"pessoa_juridica\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q2_trend",
+      "name": "How did settled value and count move?",
+      "description": "SPI only. The open calendar month is excluded.",
+      "display": "combo",
+      "sql": "q2_trend.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_transactions",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        }
+      ],
+      "viz": {
+        "graph.dimensions": [
+          "month_start"
+        ],
+        "graph.metrics": [
+          "settled_value",
+          "transactions"
+        ],
+        "series_settings": {
+          "settled_value": {
+            "display": "line",
+            "axis": "left"
+          },
+          "transactions": {
+            "display": "bar",
+            "axis": "right"
+          }
+        },
+        "column_settings": {
+          "[\"name\",\"settled_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          },
+          "[\"name\",\"transactions\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q3_natureza",
+      "name": "Who pays whom, by month?",
+      "description": "All NATUREZA codes. Default is value. Count is the same grain, not a second population.",
+      "display": "bar",
+      "sql": "q3_natureza.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_transactions",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "measure",
+          "type": "text",
+          "default": "value",
+          "required": true
+        }
+      ],
+      "viz": {
+        "stackable.stack_type": "stacked",
+        "graph.dimensions": [
+          "month_start",
+          "natureza"
+        ],
+        "graph.metrics": [
+          "amount"
+        ]
+      }
+    },
+    {
+      "key": "q3_matrix",
+      "name": "Who paid whom in the last complete month?",
+      "description": "Rows are the receiver side (P, B, G). Columns are the payer side. The two sides are not added.",
+      "display": "table",
+      "sql": "q3_matrix.sql",
+      "tags": [],
+      "viz": {
+        "column_settings": {
+          "[\"name\",\"payer_p\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          },
+          "[\"name\",\"payer_b\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          },
+          "[\"name\",\"payer_g\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q4_iniciacao",
+      "name": "How did the initiation mix shift?",
+      "description": "100% of settled value. DICT is a Pix key, QRDN a dynamic QR, QRES a static QR, MANU manual details, INIC a payment initiator. AUTO, APDN and APES stay codes. The raw token of an unstated row is in the label.",
+      "display": "bar",
+      "sql": "q4_iniciacao.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_transactions",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        }
+      ],
+      "viz": {
+        "stackable.stack_type": "normalized",
+        "graph.dimensions": [
+          "month_start",
+          "forma_iniciacao_label"
+        ],
+        "graph.metrics": [
+          "settled_value"
+        ]
+      }
+    },
+    {
+      "key": "q4_finalidade",
+      "name": "Pix, Pix Saque or Pix Troco?",
+      "description": "Finalidade is a table, not a primary chart. Nao disponivel stays visible.",
+      "display": "table",
+      "sql": "q4_finalidade.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_transactions",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        }
+      ],
+      "viz": {
+        "column_settings": {
+          "[\"name\",\"settled_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          },
+          "[\"name\",\"transactions\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q5_users",
+      "name": "How did DICT users grow?",
+      "description": "Total, natural persons and legal persons. These are users, not keys.",
+      "display": "line",
+      "sql": "q5_users.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_dict_users",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        }
+      ],
+      "viz": {
+        "graph.dimensions": [
+          "month_start"
+        ],
+        "graph.metrics": [
+          "usuarios_total",
+          "pessoa_fisica",
+          "pessoa_juridica"
+        ],
+        "column_settings": {
+          "[\"name\",\"usuarios_total\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          },
+          "[\"name\",\"pessoa_fisica\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          },
+          "[\"name\",\"pessoa_juridica\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q5_keys",
+      "name": "What is the month-end stock of keys by type?",
+      "description": "Month-end stock. Key counts are not user counts.",
+      "display": "bar",
+      "sql": "q5_keys.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_keys_stock",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        }
+      ],
+      "viz": {
+        "stackable.stack_type": "stacked",
+        "graph.dimensions": [
+          "month_start",
+          "tipo_chave"
+        ],
+        "graph.metrics": [
+          "key_stock"
+        ],
+        "column_settings": {
+          "[\"name\",\"key_stock\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q5_participants",
+      "name": "Which participants hold the most keys?",
+      "description": "Not a transaction-volume ranking. Stock of keys at the latest complete snapshot.",
+      "display": "table",
+      "sql": "q5_participants.sql",
+      "tags": [],
+      "viz": {
+        "column_settings": {
+          "[\"name\",\"key_stock\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q6_kpi_value",
+      "name": "How much moved in this geography?",
+      "description": "Receiver view by default. Payer and receiver are never added.",
+      "display": "scalar",
+      "sql": "q6_kpi_value.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_municipality",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "view",
+          "type": "text",
+          "default": "receiver",
+          "required": true
+        },
+        {
+          "name": "person",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "region",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "municipality",
+          "type": "text",
+          "default": "",
+          "required": true
+        }
+      ],
+      "viz": {
+        "column_settings": {
+          "[\"name\",\"settled_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q6_kpi_payments",
+      "name": "How many payments moved in this geography?",
+      "description": "Matches the value KPI's side and person type.",
+      "display": "scalar",
+      "sql": "q6_kpi_payments.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_municipality",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "view",
+          "type": "text",
+          "default": "receiver",
+          "required": true
+        },
+        {
+          "name": "person",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "region",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "municipality",
+          "type": "text",
+          "default": "",
+          "required": true
+        }
+      ],
+      "viz": {
+        "column_settings": {
+          "[\"name\",\"payments\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q6_kpi_people",
+      "name": "How many distinct people, in one municipality?",
+      "description": "Shown only when the filter leaves a single municipality. Summing QT_PES across municipalities overcounts. No data for this period. means the selection is not one municipality.",
+      "display": "scalar",
+      "sql": "q6_kpi_people.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_municipality",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "view",
+          "type": "text",
+          "default": "receiver",
+          "required": true
+        },
+        {
+          "name": "person",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "region",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "municipality",
+          "type": "text",
+          "default": "",
+          "required": true
+        }
+      ],
+      "viz": {
+        "column_settings": {
+          "[\"name\",\"distinct_people\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q6_region",
+      "name": "Which region moves the most?",
+      "description": "Includes Nao informado, labeled Unstated / other with the raw token.",
+      "display": "row",
+      "sql": "q6_region.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_municipality",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "view",
+          "type": "text",
+          "default": "receiver",
+          "required": true
+        },
+        {
+          "name": "person",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "municipality",
+          "type": "text",
+          "default": "",
+          "required": true
+        }
+      ],
+      "viz": {
+        "graph.dimensions": [
+          "regiao_label"
+        ],
+        "graph.metrics": [
+          "settled_value"
+        ],
+        "column_settings": {
+          "[\"name\",\"settled_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q6_state",
+      "name": "Which state moves the most?",
+      "description": "Every UF plus NAO INFORMADO. Click a bar to set the state filter.",
+      "display": "row",
+      "sql": "q6_state.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_municipality",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "view",
+          "type": "text",
+          "default": "receiver",
+          "required": true
+        },
+        {
+          "name": "person",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "region",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "municipality",
+          "type": "text",
+          "default": "",
+          "required": true
+        }
+      ],
+      "viz": {
+        "graph.dimensions": [
+          "state_label"
+        ],
+        "graph.metrics": [
+          "settled_value"
+        ],
+        "column_settings": {
+          "[\"name\",\"settled_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q6_table",
+      "name": "Which municipalities move the most?",
+      "description": "Sorted by value. Distinct people is filled only when one municipality remains. N/D stays as Unstated.",
+      "display": "table",
+      "sql": "q6_table.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_municipality",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "view",
+          "type": "text",
+          "default": "receiver",
+          "required": true
+        },
+        {
+          "name": "person",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "region",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "municipality",
+          "type": "text",
+          "default": "",
+          "required": true
+        }
+      ],
+      "viz": {
+        "table.pageSize": 25,
+        "column_settings": {
+          "[\"name\",\"settled_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          },
+          "[\"name\",\"payments\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          },
+          "[\"name\",\"pessoa_fisica_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          },
+          "[\"name\",\"pessoa_juridica_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          },
+          "[\"name\",\"distinct_people\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q6_top",
+      "name": "Top 20 municipalities by value",
+      "description": "Optional companion to the table.",
+      "display": "row",
+      "sql": "q6_top.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_municipality",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "view",
+          "type": "text",
+          "default": "receiver",
+          "required": true
+        },
+        {
+          "name": "person",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "region",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "municipality",
+          "type": "text",
+          "default": "",
+          "required": true
+        }
+      ],
+      "viz": {
+        "graph.dimensions": [
+          "municipality"
+        ],
+        "graph.metrics": [
+          "settled_value"
+        ],
+        "column_settings": {
+          "[\"name\",\"settled_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q8_age",
+      "name": "How old are the people paying or receiving?",
+      "description": "PF rows only. Nao informado stays. Nao se aplica is excluded. Blank when a state or municipality filter is set, because this series has no municipality grain.",
+      "display": "bar",
+      "sql": "q8_age.sql",
+      "tags": [
+        {
+          "name": "period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_municipality",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "view",
+          "type": "text",
+          "default": "receiver",
+          "required": true
+        },
+        {
+          "name": "region",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "municipality",
+          "type": "text",
+          "default": "",
+          "required": true
+        }
+      ],
+      "viz": {
+        "graph.dimensions": [
+          "age_band"
+        ],
+        "graph.metrics": [
+          "transactions"
+        ],
+        "column_settings": {
+          "[\"name\",\"transactions\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q8_notice",
+      "name": "Why is the age panel blank?",
+      "description": "Shown when a state or municipality filter is active.",
+      "display": "scalar",
+      "sql": "q8_notice.sql",
+      "tags": [
+        {
+          "name": "state",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "municipality",
+          "type": "text",
+          "default": "",
+          "required": true
+        }
+      ],
+      "viz": {}
+    },
+    {
+      "key": "q7_flow",
+      "name": "Payer region \u2192 receiver region, last complete month",
+      "description": "Optional matrix. Not a sum of the two sides: each cell is the flow from the payer region to the receiver region.",
+      "display": "table",
+      "sql": "q7_flow.sql",
+      "tags": [],
+      "viz": {
+        "column_settings": {
+          "[\"name\",\"settled_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q9_kpi_value",
+      "name": "How much was settled to these receivers?",
+      "description": "Sum of vllanliq. vlcompra and vldinespec are not used.",
+      "display": "scalar",
+      "sql": "q9_kpi_value.sql",
+      "tags": [
+        {
+          "name": "receiver_period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_receiver_profile",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "porte",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "section",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "person_type",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "mei",
+          "type": "text",
+          "default": "All",
+          "required": true
+        }
+      ],
+      "viz": {
+        "column_settings": {
+          "[\"name\",\"settled_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q9_kpi_payments",
+      "name": "How many payments were settled to these receivers?",
+      "description": "Sum of qtlanliq.",
+      "display": "scalar",
+      "sql": "q9_kpi_payments.sql",
+      "tags": [
+        {
+          "name": "receiver_period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_receiver_profile",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "porte",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "section",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "person_type",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "mei",
+          "type": "text",
+          "default": "All",
+          "required": true
+        }
+      ],
+      "viz": {
+        "column_settings": {
+          "[\"name\",\"payments\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q9_kpi_share",
+      "name": "What share of value went to micro and small firms?",
+      "description": "porte in Microempresa or Pequeno Porte, over the other receiver filters. The porte filter does not apply to this share.",
+      "display": "scalar",
+      "sql": "q9_kpi_share.sql",
+      "tags": [
+        {
+          "name": "receiver_period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_receiver_profile",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "section",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "person_type",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "mei",
+          "type": "text",
+          "default": "All",
+          "required": true
+        }
+      ],
+      "viz": {
+        "column_settings": {
+          "[\"name\",\"micro_and_small_share\"]": {
+            "number_style": "percent",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q9_section",
+      "name": "Which CNAE sections received the value?",
+      "description": "Pessoa fisica and Outros stay as their own bars.",
+      "display": "row",
+      "sql": "q9_section.sql",
+      "tags": [
+        {
+          "name": "receiver_period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_receiver_profile",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "porte",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "person_type",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "mei",
+          "type": "text",
+          "default": "All",
+          "required": true
+        }
+      ],
+      "viz": {
+        "graph.dimensions": [
+          "cnae_section"
+        ],
+        "graph.metrics": [
+          "settled_value"
+        ],
+        "column_settings": {
+          "[\"name\",\"settled_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q9_porte",
+      "name": "How is settled value split by firm size?",
+      "description": "Porte over time. A residual Outros is labeled Unstated / other.",
+      "display": "bar",
+      "sql": "q9_porte.sql",
+      "tags": [
+        {
+          "name": "receiver_period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_receiver_profile",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "section",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "person_type",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "mei",
+          "type": "text",
+          "default": "All",
+          "required": true
+        }
+      ],
+      "viz": {
+        "stackable.stack_type": "stacked",
+        "graph.dimensions": [
+          "month_start",
+          "porte_label"
+        ],
+        "graph.metrics": [
+          "settled_value"
+        ]
+      }
+    },
+    {
+      "key": "q9_mei",
+      "name": "MEI, as published",
+      "description": "Field names are as published. S, N and Outros are not renamed.",
+      "display": "bar",
+      "sql": "q9_mei.sql",
+      "tags": [
+        {
+          "name": "receiver_period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_receiver_profile",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "porte",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "section",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "person_type",
+          "type": "text",
+          "default": "All",
+          "required": true
+        }
+      ],
+      "viz": {
+        "graph.dimensions": [
+          "mei_label"
+        ],
+        "graph.metrics": [
+          "settled_value"
+        ],
+        "column_settings": {
+          "[\"name\",\"settled_value\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q9_ticket_section",
+      "name": "What is the average ticket by CNAE section?",
+      "description": "vllanliq / qtlanliq at the section grain.",
+      "display": "row",
+      "sql": "q9_ticket_section.sql",
+      "tags": [
+        {
+          "name": "receiver_period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_receiver_profile",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "porte",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "person_type",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "mei",
+          "type": "text",
+          "default": "All",
+          "required": true
+        }
+      ],
+      "viz": {
+        "graph.dimensions": [
+          "cnae_section"
+        ],
+        "graph.metrics": [
+          "average_ticket"
+        ],
+        "column_settings": {
+          "[\"name\",\"average_ticket\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q9_ticket_porte",
+      "name": "What is the average ticket by firm size?",
+      "description": "vllanliq / qtlanliq at the porte grain.",
+      "display": "row",
+      "sql": "q9_ticket_porte.sql",
+      "tags": [
+        {
+          "name": "receiver_period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_receiver_profile",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        },
+        {
+          "name": "section",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "person_type",
+          "type": "text",
+          "default": "All",
+          "required": true
+        },
+        {
+          "name": "mei",
+          "type": "text",
+          "default": "All",
+          "required": true
+        }
+      ],
+      "viz": {
+        "graph.dimensions": [
+          "porte_label"
+        ],
+        "graph.metrics": [
+          "average_ticket"
+        ],
+        "column_settings": {
+          "[\"name\",\"average_ticket\"]": {
+            "number_style": "currency",
+            "currency": "BRL",
+            "currency_style": "symbol",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "med_banner",
+      "name": "How current is MED?",
+      "description": "MED is national, monthly, and published about 30 days after month-end.",
+      "display": "scalar",
+      "sql": "med_banner.sql",
+      "tags": [],
+      "viz": {}
+    },
+    {
+      "key": "med_gap",
+      "name": "Which MED month is missing?",
+      "description": "A missing month is this sentence, not a zero.",
+      "display": "scalar",
+      "sql": "med_gap.sql",
+      "tags": [],
+      "viz": {}
+    },
+    {
+      "key": "med_contested",
+      "name": "How many PIX were contested via MED?",
+      "description": "QtdePixcontestados. Not fraud cases.",
+      "display": "smartscalar",
+      "sql": "med_contested.sql",
+      "tags": [],
+      "viz": {
+        "scalar.field": "contested_via_med",
+        "column_settings": {
+          "[\"name\",\"contested_via_med\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "med_accepted",
+      "name": "How many contests were accepted, and what is the published per-100k rate?",
+      "description": "Qtdecontestacoesaceitas and Qtdecontestacoesaceitasacada100mil as published. The rate is not recomputed.",
+      "display": "object",
+      "sql": "med_accepted.sql",
+      "tags": [],
+      "viz": {}
+    },
+    {
+      "key": "med_percent",
+      "name": "What return rate did BCB publish?",
+      "description": "PercentualdeDevolucao as published. Not recomputed.",
+      "display": "smartscalar",
+      "sql": "med_percent.sql",
+      "tags": [],
+      "viz": {
+        "scalar.field": "percentual_de_devolucao",
+        "column_settings": {
+          "[\"name\",\"percentual_de_devolucao\"]": {
+            "decimals": 1
+          }
+        }
+      }
+    },
+    {
+      "key": "med_users",
+      "name": "How many users carry a fraud mark?",
+      "description": "QtdeUsuarioscommarcacoesdefraude. A mark, not a fraud case.",
+      "display": "smartscalar",
+      "sql": "med_users.sql",
+      "tags": [],
+      "viz": {
+        "scalar.field": "users_with_a_fraud_mark",
+        "column_settings": {
+          "[\"name\",\"users_with_a_fraud_mark\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "med_keys",
+      "name": "How many keys carry a fraud mark?",
+      "description": "QtdeChavesPixcommarcacoesdefraude. Keys, not users.",
+      "display": "smartscalar",
+      "sql": "med_keys.sql",
+      "tags": [],
+      "viz": {
+        "scalar.field": "keys_with_a_fraud_mark",
+        "column_settings": {
+          "[\"name\",\"keys_with_a_fraud_mark\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q10a",
+      "name": "Are contests, acceptances and the published return rate moving together?",
+      "description": "Axis starts at January 2022. Months BCB has not published are absent, not zero.",
+      "display": "combo",
+      "sql": "q10a.sql",
+      "tags": [
+        {
+          "name": "med_period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_med",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        }
+      ],
+      "viz": {
+        "graph.dimensions": [
+          "month_start"
+        ],
+        "graph.metrics": [
+          "contested_via_med",
+          "accepted",
+          "percentual_de_devolucao"
+        ],
+        "series_settings": {
+          "contested_via_med": {
+            "display": "line",
+            "axis": "left"
+          },
+          "accepted": {
+            "display": "line",
+            "axis": "left"
+          },
+          "percentual_de_devolucao": {
+            "display": "line",
+            "axis": "right"
+          }
+        },
+        "column_settings": {
+          "[\"name\",\"contested_via_med\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          },
+          "[\"name\",\"accepted\"]": {
+            "number_style": "decimal",
+            "decimals": 0
+          }
+        }
+      }
+    },
+    {
+      "key": "q_ratio",
+      "name": "Is suspected fraud growing faster than Pix?",
+      "description": "Approximate ratio computed by this portfolio; denominator is SPI-only (no on-us). Not an official BCB rate.",
+      "display": "line",
+      "sql": "q_ratio.sql",
+      "tags": [
+        {
+          "name": "med_period",
+          "type": "dimension",
+          "field": [
+            "fct_pix_med",
+            "month_start"
+          ],
+          "widget": "date/all-options"
+        }
+      ],
+      "viz": {
+        "graph.dimensions": [
+          "month_start"
+        ],
+        "graph.metrics": [
+          "accepted_value_over_spi"
+        ],
+        "column_settings": {
+          "[\"name\",\"accepted_value_over_spi\"]": {
+            "number_style": "percent",
+            "decimals": 2
+          }
+        }
+      }
+    },
+    {
+      "key": "q10b",
+      "name": "Why was value not returned, and how do returns compare?",
+      "description": "Last complete MED month. The first three bars are non-return reasons. Full and partial returns are a comparison, not reasons.",
+      "display": "bar",
+      "sql": "q10b.sql",
+      "tags": [
+        {
+          "name": "med_measure",
+          "type": "text",
+          "default": "value",
+          "required": true
+        }
+      ],
+      "viz": {
+        "graph.dimensions": [
+          "category"
+        ],
+        "graph.metrics": [
+          "amount"
+        ]
+      }
+    }
+  ],
+  "dashboards": [
+    {
+      "key": "at_a_glance",
+      "name": "PIX at a glance",
+      "description": "National SPI picture for the last 12 complete months. KPIs stay on the latest complete month.",
+      "width": "fixed",
+      "parameters": [
+        {
+          "id": "period",
+          "name": "Period",
+          "slug": "period",
+          "type": "date/all-options",
+          "default": "computed:transactions_last_12"
+        },
+        {
+          "id": "measure",
+          "name": "Value or count",
+          "slug": "measure",
+          "type": "string/=",
+          "default": [
+            "value"
+          ],
+          "values_source_type": "static-list",
+          "values_source_config": {
+            "values": [
+              "value",
+              "count"
+            ]
+          }
+        }
+      ],
+      "cards": [
+        {
+          "question": "q1_tx_count",
+          "row": 0,
+          "col": 0,
+          "size_x": 6,
+          "size_y": 4
+        },
+        {
+          "question": "q1_tx_value",
+          "row": 0,
+          "col": 6,
+          "size_x": 6,
+          "size_y": 4
+        },
+        {
+          "question": "q1_ticket",
+          "row": 0,
+          "col": 12,
+          "size_x": 6,
+          "size_y": 4
+        },
+        {
+          "question": "q1_dict_users",
+          "row": 0,
+          "col": 18,
+          "size_x": 6,
+          "size_y": 4
+        },
+        {
+          "question": "q2_trend",
+          "row": 5,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 8
+        },
+        {
+          "question": "q3_natureza",
+          "row": 14,
+          "col": 0,
+          "size_x": 15,
+          "size_y": 8
+        },
+        {
+          "question": "q3_matrix",
+          "row": 14,
+          "col": 15,
+          "size_x": 9,
+          "size_y": 8
+        },
+        {
+          "question": "q4_iniciacao",
+          "row": 23,
+          "col": 0,
+          "size_x": 16,
+          "size_y": 8
+        },
+        {
+          "question": "q4_finalidade",
+          "row": 23,
+          "col": 16,
+          "size_x": 8,
+          "size_y": 8
+        },
+        {
+          "question": "q5_users",
+          "row": 32,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 7
+        },
+        {
+          "question": "q5_keys",
+          "row": 41,
+          "col": 0,
+          "size_x": 14,
+          "size_y": 8
+        },
+        {
+          "question": "q5_participants",
+          "row": 41,
+          "col": 14,
+          "size_x": 10,
+          "size_y": 8
+        }
+      ],
+      "texts": [
+        {
+          "row": 4,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 2,
+          "text": "SPI only. The open calendar month is excluded."
+        },
+        {
+          "row": 40,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 2,
+          "text": "Month-end stock. Key counts are not user counts."
+        },
+        {
+          "row": 49,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 2,
+          "text": "Not a transaction-volume ranking."
+        },
+        {
+          "row": 51,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 2,
+          "text": "Source: Banco Central do Brasil, Estat\u00edsticas do Pix. Transaction figures are SPI-settled only and exclude Pix settled on the participant's own books."
+        }
+      ]
+    },
+    {
+      "key": "where",
+      "name": "Where it moves",
+      "description": "Geography of PIX. Receiver view is the default. Payer and receiver are never added.",
+      "width": "fixed",
+      "parameters": [
+        {
+          "id": "period",
+          "name": "Period",
+          "slug": "period",
+          "type": "date/all-options",
+          "default": "computed:transactions_last_12"
+        },
+        {
+          "id": "region",
+          "name": "Region",
+          "slug": "region",
+          "type": "string/=",
+          "default": [
+            "All"
+          ],
+          "values_source_type": "static-list",
+          "values_source_config": {
+            "values": [
+              "All",
+              "NORTE",
+              "NORDESTE",
+              "CENTRO-OESTE",
+              "SUDESTE",
+              "SUL",
+              "Unstated / other (Nao informado)"
+            ]
+          }
+        },
+        {
+          "id": "state",
+          "name": "State",
+          "slug": "state",
+          "type": "string/=",
+          "default": [
+            "All"
+          ],
+          "values_source_type": "static-list",
+          "values_source_config": {
+            "values": [
+              "All"
+            ]
+          }
+        },
+        {
+          "id": "view",
+          "name": "Payer or receiver",
+          "slug": "view",
+          "type": "string/=",
+          "default": [
+            "receiver"
+          ],
+          "values_source_type": "static-list",
+          "values_source_config": {
+            "values": [
+              "receiver",
+              "payer"
+            ]
+          }
+        },
+        {
+          "id": "person",
+          "name": "Person type",
+          "slug": "person",
+          "type": "string/=",
+          "default": [
+            "All"
+          ],
+          "values_source_type": "static-list",
+          "values_source_config": {
+            "values": [
+              "All",
+              "PF",
+              "PJ"
+            ]
+          }
+        },
+        {
+          "id": "municipality",
+          "name": "Municipality",
+          "slug": "municipality",
+          "type": "string/="
+        }
+      ],
+      "cards": [
+        {
+          "question": "q6_kpi_value",
+          "row": 0,
+          "col": 0,
+          "size_x": 8,
+          "size_y": 4
+        },
+        {
+          "question": "q6_kpi_payments",
+          "row": 0,
+          "col": 8,
+          "size_x": 8,
+          "size_y": 4
+        },
+        {
+          "question": "q6_kpi_people",
+          "row": 0,
+          "col": 16,
+          "size_x": 8,
+          "size_y": 4
+        },
+        {
+          "question": "q6_region",
+          "row": 5,
+          "col": 0,
+          "size_x": 10,
+          "size_y": 8
+        },
+        {
+          "question": "q6_state",
+          "row": 5,
+          "col": 10,
+          "size_x": 14,
+          "size_y": 8,
+          "click": {
+            "column": "state_label",
+            "parameter": "state"
+          }
+        },
+        {
+          "question": "q6_table",
+          "row": 14,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 10
+        },
+        {
+          "question": "q6_top",
+          "row": 25,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 8
+        },
+        {
+          "question": "q8_age",
+          "row": 34,
+          "col": 0,
+          "size_x": 16,
+          "size_y": 8
+        },
+        {
+          "question": "q8_notice",
+          "row": 34,
+          "col": 16,
+          "size_x": 8,
+          "size_y": 4
+        },
+        {
+          "question": "q7_flow",
+          "row": 43,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 8
+        }
+      ],
+      "texts": [
+        {
+          "row": 51,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 2,
+          "text": "Source: Banco Central do Brasil, Estat\u00edsticas do Pix. Transaction figures are SPI-settled only and exclude Pix settled on the participant's own books."
+        }
+      ]
+    },
+    {
+      "key": "receivers",
+      "name": "Receivers and MED",
+      "description": "Receiver profile from CnaePorteRecebedor, then national MED. MED has no geography filter.",
+      "width": "fixed",
+      "parameters": [
+        {
+          "id": "receiver_period",
+          "name": "Receiver period",
+          "slug": "receiver_period",
+          "type": "date/all-options",
+          "default": "computed:transactions_last_12"
+        },
+        {
+          "id": "porte",
+          "name": "Porte",
+          "slug": "porte",
+          "type": "string/=",
+          "default": [
+            "All"
+          ],
+          "values_source_type": "static-list",
+          "values_source_config": {
+            "values": [
+              "All",
+              "Microempresa",
+              "Pequeno Porte",
+              "Media Empresa",
+              "Grande",
+              "Unstated / other (Nao informado)"
+            ]
+          }
+        },
+        {
+          "id": "section",
+          "name": "CNAE section",
+          "slug": "section",
+          "type": "string/=",
+          "default": [
+            "All"
+          ]
+        },
+        {
+          "id": "person_type",
+          "name": "Person type",
+          "slug": "person_type",
+          "type": "string/=",
+          "default": [
+            "All"
+          ],
+          "values_source_type": "static-list",
+          "values_source_config": {
+            "values": [
+              "All",
+              "PF",
+              "PJ"
+            ]
+          }
+        },
+        {
+          "id": "mei",
+          "name": "MEI",
+          "slug": "mei",
+          "type": "string/=",
+          "default": [
+            "All"
+          ],
+          "values_source_type": "static-list",
+          "values_source_config": {
+            "values": [
+              "All",
+              "S",
+              "N",
+              "Outros"
+            ]
+          }
+        },
+        {
+          "id": "med_period",
+          "name": "MED period",
+          "slug": "med_period",
+          "type": "date/all-options",
+          "default": "computed:med_full"
+        },
+        {
+          "id": "med_measure",
+          "name": "MED value or count",
+          "slug": "med_measure",
+          "type": "string/=",
+          "default": [
+            "value"
+          ],
+          "values_source_type": "static-list",
+          "values_source_config": {
+            "values": [
+              "value",
+              "count"
+            ]
+          }
+        }
+      ],
+      "cards": [
+        {
+          "question": "q9_kpi_value",
+          "row": 2,
+          "col": 0,
+          "size_x": 8,
+          "size_y": 4
+        },
+        {
+          "question": "q9_kpi_payments",
+          "row": 2,
+          "col": 8,
+          "size_x": 8,
+          "size_y": 4
+        },
+        {
+          "question": "q9_kpi_share",
+          "row": 2,
+          "col": 16,
+          "size_x": 8,
+          "size_y": 4
+        },
+        {
+          "question": "q9_section",
+          "row": 7,
+          "col": 0,
+          "size_x": 12,
+          "size_y": 8
+        },
+        {
+          "question": "q9_ticket_section",
+          "row": 7,
+          "col": 12,
+          "size_x": 12,
+          "size_y": 8
+        },
+        {
+          "question": "q9_porte",
+          "row": 16,
+          "col": 0,
+          "size_x": 12,
+          "size_y": 8
+        },
+        {
+          "question": "q9_ticket_porte",
+          "row": 16,
+          "col": 12,
+          "size_x": 12,
+          "size_y": 8
+        },
+        {
+          "question": "q9_mei",
+          "row": 25,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 7
+        },
+        {
+          "question": "med_banner",
+          "row": 36,
+          "col": 0,
+          "size_x": 16,
+          "size_y": 3
+        },
+        {
+          "question": "med_gap",
+          "row": 36,
+          "col": 16,
+          "size_x": 8,
+          "size_y": 3
+        },
+        {
+          "question": "med_contested",
+          "row": 40,
+          "col": 0,
+          "size_x": 8,
+          "size_y": 4
+        },
+        {
+          "question": "med_accepted",
+          "row": 40,
+          "col": 8,
+          "size_x": 8,
+          "size_y": 4
+        },
+        {
+          "question": "med_percent",
+          "row": 40,
+          "col": 16,
+          "size_x": 8,
+          "size_y": 4
+        },
+        {
+          "question": "med_users",
+          "row": 45,
+          "col": 0,
+          "size_x": 12,
+          "size_y": 4
+        },
+        {
+          "question": "med_keys",
+          "row": 45,
+          "col": 12,
+          "size_x": 12,
+          "size_y": 4
+        },
+        {
+          "question": "q10a",
+          "row": 50,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 8
+        },
+        {
+          "question": "q_ratio",
+          "row": 60,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 8
+        },
+        {
+          "question": "q10b",
+          "row": 70,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 8
+        }
+      ],
+      "texts": [
+        {
+          "row": 0,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 2,
+          "text": "Receivers. Settled value is vllanliq. Purchase value, cash and same-ownership are not on this dashboard."
+        },
+        {
+          "row": 24,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 2,
+          "text": "Field names are as published."
+        },
+        {
+          "row": 33,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 2,
+          "text": "MED. Figures are national and monthly. There is no municipality filter."
+        },
+        {
+          "row": 59,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 2,
+          "text": "Approximate ratio computed by this portfolio; denominator is SPI-only (no on-us). Not an official BCB rate."
+        },
+        {
+          "row": 79,
+          "col": 0,
+          "size_x": 24,
+          "size_y": 2,
+          "text": "Source: Banco Central do Brasil, Estat\u00edsticas do Pix. Transaction figures are SPI-settled only and exclude Pix settled on the participant's own books."
+        }
+      ]
+    }
+  ]
+}

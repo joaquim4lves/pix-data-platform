@@ -1,0 +1,98 @@
+[
+  {
+    "id": "live-ingest-med",
+    "category": "ingestion",
+    "description": "Load EstatisticasFraudesPix on the live ingest path. The contract and the seeded dbt source already exist. ENTITY_ORDER does not include it, so make ingest never writes the partition.",
+    "steps": [
+      "Add FRAUDES to ENTITY_ORDER only after the client can filter AnoMes and still refuses a saturated page when $skip returns HTTP 500.",
+      "Keep $count unused. The service returns HTTP 403.",
+      "Write a fixture month through the existing Parquet writer and extend the unit test that builds the schema.",
+      "Run make test and make dbt-build on write_sample_raw output. Do not call the live Olinda host from CI.",
+      "Confirm the mart still says contested via MED and does not rename the counts to fraud.",
+      "Leave the in-progress America/Sao_Paulo month out of the watermark."
+    ],
+    "passes": false
+  },
+  {
+    "id": "live-ingest-cnae",
+    "category": "ingestion",
+    "description": "Load CnaePorteRecebedor on the live ingest path. The dashboard mart currently reads the seeded extract. vlcompra, vldinespec, and mesmatit stay off the v1.0 dashboards.",
+    "steps": [
+      "Add CNAE to ENTITY_ORDER with the same $filter and page rules as the other function imports.",
+      "Cover the writer schema with a unit test and a singular dbt test that the receiver grain does not drop the published Outros bucket.",
+      "Run make test and make dbt-build against fixture Parquet.",
+      "Do not put precautionary-block columns on a dashboard in this feature."
+    ],
+    "passes": false
+  },
+  {
+    "id": "live-ingest-dict-users",
+    "category": "ingestion",
+    "description": "Load PixUsuariosCadastradosDICT. It is an entity set, not a function import, so it needs a second read path. The published total is a user stock, not a key count.",
+    "steps": [
+      "Implement the entity-set read without $count and without treating a failed $skip as a complete month.",
+      "Snapshot the month-end date the spike documented. Do not invent a daily series.",
+      "Add a dbt test that usuarios_total is the published total and is not summed from ChavesPix.",
+      "Run make test and make dbt-build on fixture Parquet. Live HTTP stays out of CI."
+    ],
+    "passes": false
+  },
+  {
+    "id": "reconcile-municipality-national",
+    "category": "modeling",
+    "description": "Reconcile municipality payer and receiver totals to the national SPI cube, with an explicit residual for the N/D row and the SPI-only scope. v1.0 states that these figures are not reconciled.",
+    "steps": [
+      "Add a singular dbt test or model that compares municipality sums to fct_pix_transactions for a closed month and records the gap instead of hiding it.",
+      "Keep the N/D row. Do not drop a null IBGE code to make the totals match.",
+      "State in the model description that both sides are SPI-settled and that the comparison is not an official BCB reconciliation.",
+      "Run make dbt-build on the fixture. The test must fail the build if the residual is unexplained, not if the residual is merely non-zero and documented."
+    ],
+    "passes": false
+  },
+  {
+    "id": "aws-apply-runbook",
+    "category": "infrastructure",
+    "description": "Keep the AWS apply path documented and unapplied. An agent must not apply the stack. A human with an account is the only caller of the workflow_dispatch deploy.",
+    "steps": [
+      "Read docs/runbooks/aws-dev.md against infra/terraform and list any step the runbook names that the Terraform does not implement.",
+      "Run make tf-check when terraform is installed. init uses -backend=false.",
+      "Confirm the diff contains no terraform apply, no terraform destroy, and no aws mutating call.",
+      "Leave passes false until a human records, outside an agent session, that the account was applied. An agent does not flip this feature."
+    ],
+    "passes": false
+  },
+  {
+    "id": "athena-dashboard-marts",
+    "category": "modeling",
+    "description": "The v1.0 dashboard marts are not in transform/athena/views.sql, and dbt build --target athena has not been run. Publishing them is a later slice and still does not apply Terraform by itself.",
+    "steps": [
+      "Write an ADR if the Athena target becomes the dashboard path. ADR-007 keeps Metabase on local DuckDB.",
+      "Extend the parse-only Athena check so the new models parse with skip_workgroup_check and no AWS call.",
+      "Do not run the target against a workgroup from an agent session.",
+      "Run make test and make dbt-build on DuckDB."
+    ],
+    "passes": false
+  },
+  {
+    "id": "optional-spark-slice",
+    "category": "exploration",
+    "description": "Optional Spark slice for a portfolio reader who wants a second engine. No Spark code exists. This starts with an ADR, not a cluster.",
+    "steps": [
+      "Write the next ADR that says what Spark would read, what stays on DuckDB, and why the local demo still does not need a cluster.",
+      "Do not add a dependency or a cluster config in the same change as the ADR.",
+      "Point the ADR at make dbt-build as the check that must stay green."
+    ],
+    "passes": false
+  },
+  {
+    "id": "optional-ai-slice",
+    "category": "exploration",
+    "description": "Optional product-AI slice. Nothing in the repo calls a model. An ADR has to land before any prompt, eval, or API client.",
+    "steps": [
+      "Write an ADR that names the question the model would answer, the tables it may read, and the fact it must not invent a MED or fraud figure.",
+      "Do not add an API key, a secret, or a vendor SDK in that ADR slice.",
+      "Keep make test and make dbt-build green."
+    ],
+    "passes": false
+  }
+]

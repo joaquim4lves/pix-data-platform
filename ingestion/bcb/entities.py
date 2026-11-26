@@ -200,5 +200,156 @@ CHAVES = EntitySpec(
     split_values=TIPO_CHAVE_VALUES,
 )
 
+
+class EstatisticasFraudesPix(_Contract):
+    """National MED month. Every measure is Edm.Decimal on Olinda except AnoMes."""
+
+    AnoMes: int
+    QtdePixcontestados: Decimal
+    Qtdecontestacoesaceitas: Decimal
+    Qtdecontestacoesrejeitadas: Decimal
+    Qtdecontestacoesaceitasacada100mil: Decimal
+    QtdeUsuarioscommarcacoesdefraude: Decimal
+    QtdeChavesPixcommarcacoesdefraude: Decimal
+    ValorPixcontestadosaceitos: Decimal
+    QuantidadedevolvidaintegralmentepormeiodoMED: Decimal
+    ValorPixdevolvidosintegralmente: Decimal
+    QuantidadedevolvidaparcialmentepormeiodoMED: Decimal
+    ValorPixdevolvidosparcialmente: Decimal
+    ValorPixresidualnaodevolvido: Decimal
+    Quantidadedenaodevolvidossaldoinsuficiente: Decimal
+    ValorPixnaodevolvidossaldoinsuficiente: Decimal
+    Quantidadedenaodevolvidoscontaencerrada: Decimal
+    Valornaodevolvidoscontaencerrada: Decimal
+    Quantidadedenaodevolvidosmotivosdiversos: Decimal
+    ValorPixnaodevolvidosmotivosdiversos: Decimal
+    PercentualdeDevolucao: Decimal
+    QtdePixbloqueadoscautelarmenteeliberados: Decimal
+    ValorPixbloqueadoscautelarmenteeliberados: Decimal
+    QtdePixbloqueadoscautelarmenteedevolvidos: Decimal
+    ValorPixbloqueadoscautelarmenteedevolvidos: Decimal
+
+
+class CnaePorteRecebedor(_Contract):
+    AnoMes: int
+    tipopessoa: str
+    formainic: str
+    finalidade: str
+    porte: str
+    mei: str
+    cnssecao: str
+    mesmatit: str
+    naturezarel: str
+    qtpagador: Decimal
+    qtrecebedor: Decimal
+    qtlanliq: Decimal
+    vllanliq: Decimal
+    vlcompra: Decimal
+    vldinespec: Decimal
+
+
+class PixUsuariosCadastradosDICT(_Contract):
+    DataGraficosPix: date
+    qtdUsuariosPessoaFisica: int
+    qtdUsuariosPessoaJuridica: int
+    qtdUsuariosCadastradosDICTTotal: int
+
+
+def _fraud_schema() -> pa.Schema:
+    fields = [_int("AnoMes", pa.int32())]
+    for name in (
+        "QtdePixcontestados",
+        "Qtdecontestacoesaceitas",
+        "Qtdecontestacoesrejeitadas",
+        "Qtdecontestacoesaceitasacada100mil",
+        "QtdeUsuarioscommarcacoesdefraude",
+        "QtdeChavesPixcommarcacoesdefraude",
+        "ValorPixcontestadosaceitos",
+        "QuantidadedevolvidaintegralmentepormeiodoMED",
+        "ValorPixdevolvidosintegralmente",
+        "QuantidadedevolvidaparcialmentepormeiodoMED",
+        "ValorPixdevolvidosparcialmente",
+        "ValorPixresidualnaodevolvido",
+        "Quantidadedenaodevolvidossaldoinsuficiente",
+        "ValorPixnaodevolvidossaldoinsuficiente",
+        "Quantidadedenaodevolvidoscontaencerrada",
+        "Valornaodevolvidoscontaencerrada",
+        "Quantidadedenaodevolvidosmotivosdiversos",
+        "ValorPixnaodevolvidosmotivosdiversos",
+        "PercentualdeDevolucao",
+        "QtdePixbloqueadoscautelarmenteeliberados",
+        "ValorPixbloqueadoscautelarmenteeliberados",
+        "QtdePixbloqueadoscautelarmenteedevolvidos",
+        "ValorPixbloqueadoscautelarmenteedevolvidos",
+    ):
+        fields.append(_decimal(name))
+    return pa.schema(fields)
+
+
+FRAUDES_SCHEMA = _fraud_schema()
+
+CNAE_SCHEMA = pa.schema(
+    [
+        _int("AnoMes", pa.int32()),
+        _string("tipopessoa"),
+        _string("formainic"),
+        _string("finalidade"),
+        _string("porte"),
+        _string("mei"),
+        _string("cnssecao"),
+        _string("mesmatit"),
+        _string("naturezarel"),
+        _decimal("qtpagador"),
+        _decimal("qtrecebedor"),
+        _decimal("qtlanliq"),
+        _decimal("vllanliq"),
+        _decimal("vlcompra"),
+        _decimal("vldinespec"),
+    ]
+)
+
+USUARIOS_SCHEMA = pa.schema(
+    [
+        pa.field("DataGraficosPix", pa.date32(), nullable=False),
+        _int("qtdUsuariosPessoaFisica", pa.int64()),
+        _int("qtdUsuariosPessoaJuridica", pa.int64()),
+        _int("qtdUsuariosCadastradosDICTTotal", pa.int64()),
+    ]
+)
+
+FRAUDES = EntitySpec(
+    name="EstatisticasFraudesPix",
+    resource="EstatisticasFraudesPix",
+    param_name="Database",
+    period="ano_mes",
+    model=EstatisticasFraudesPix,
+    schema=FRAUDES_SCHEMA,
+    sort_columns=("AnoMes",),
+)
+
+CNAE = EntitySpec(
+    name="CnaePorteRecebedor",
+    resource="CnaePorteRecebedor",
+    param_name="Database",
+    period="ano_mes",
+    model=CnaePorteRecebedor,
+    schema=CNAE_SCHEMA,
+    sort_columns=("AnoMes", "tipopessoa", "cnssecao", "porte", "mei", "naturezarel"),
+)
+
+USUARIOS = EntitySpec(
+    name="PixUsuariosCadastradosDICT",
+    resource="PixUsuariosCadastradosDICT",
+    param_name="",
+    period="date",
+    model=PixUsuariosCadastradosDICT,
+    schema=USUARIOS_SCHEMA,
+    sort_columns=("DataGraficosPix",),
+)
+
 ENTITY_ORDER: tuple[EntitySpec, ...] = (TRANSACOES, MUNICIPIO, CHAVES)
 ENTITIES: dict[str, EntitySpec] = {spec.name: spec for spec in ENTITY_ORDER}
+
+# Seeded for the v1.0 dashboards. Not part of live ingest: PixUsuariosCadastradosDICT
+# is an entity set (no function import), and these three are not in the v0.1 watermark.
+DASHBOARD_SPECS: tuple[EntitySpec, ...] = (FRAUDES, CNAE, USUARIOS)

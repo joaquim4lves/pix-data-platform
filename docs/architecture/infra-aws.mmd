@@ -22,7 +22,7 @@ flowchart TB
     pg[("PostgreSQL")]
     cdc["Python pgoutput consumer"]
     af["Airflow — local only"]
-    mb["Metabase — queries Athena"]
+    mb["Metabase — DuckDB marts, local only"]
     pg --> cdc
     cdc ~~~ af
     af ~~~ mb
@@ -59,4 +59,4 @@ flowchart TB
   bcb -->|"HTTPS pull"| lam
   cdc --> sqs
   gh -->|"Actions via OIDC"| iam
-  mb -.->|"SQL"| ath
+  mb -.->|"Athena path, not applied"| ath

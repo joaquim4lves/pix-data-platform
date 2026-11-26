@@ -46,6 +46,70 @@ def municipio_row(**overrides: object) -> dict[str, object]:
     return row
 
 
+def fraud_row(**overrides: object) -> dict[str, object]:
+    row: dict[str, object] = {
+        "AnoMes": 202609,
+        "QtdePixcontestados": "1000",
+        "Qtdecontestacoesaceitas": "400",
+        "Qtdecontestacoesrejeitadas": "600",
+        "Qtdecontestacoesaceitasacada100mil": "3.834",
+        "QtdeUsuarioscommarcacoesdefraude": "120",
+        "QtdeChavesPixcommarcacoesdefraude": "80",
+        "ValorPixcontestadosaceitos": "250.00",
+        "QuantidadedevolvidaintegralmentepormeiodoMED": "200",
+        "ValorPixdevolvidosintegralmente": "140.00",
+        "QuantidadedevolvidaparcialmentepormeiodoMED": "40",
+        "ValorPixdevolvidosparcialmente": "20.00",
+        "ValorPixresidualnaodevolvido": "90.00",
+        "Quantidadedenaodevolvidossaldoinsuficiente": "70",
+        "ValorPixnaodevolvidossaldoinsuficiente": "40.00",
+        "Quantidadedenaodevolvidoscontaencerrada": "20",
+        "Valornaodevolvidoscontaencerrada": "15.00",
+        "Quantidadedenaodevolvidosmotivosdiversos": "30",
+        "ValorPixnaodevolvidosmotivosdiversos": "35.00",
+        "PercentualdeDevolucao": "40.0",
+        "QtdePixbloqueadoscautelarmenteeliberados": "1",
+        "ValorPixbloqueadoscautelarmenteeliberados": "2.00",
+        "QtdePixbloqueadoscautelarmenteedevolvidos": "3",
+        "ValorPixbloqueadoscautelarmenteedevolvidos": "4.00",
+    }
+    row.update(overrides)
+    return row
+
+
+def cnae_row(**overrides: object) -> dict[str, object]:
+    row: dict[str, object] = {
+        "AnoMes": 202610,
+        "tipopessoa": "PJ",
+        "formainic": "DICT",
+        "finalidade": "Pix",
+        "porte": "Microempresa",
+        "mei": "S",
+        "cnssecao": "G - Comercio",
+        "mesmatit": "N",
+        "naturezarel": "P2B",
+        "qtpagador": "10",
+        "qtrecebedor": "8",
+        "qtlanliq": "20",
+        "vllanliq": "1000.00",
+        "vlcompra": "1.00",
+        "vldinespec": "2.00",
+    }
+    row.update(overrides)
+    return row
+
+
+def dict_users_row(**overrides: object) -> dict[str, object]:
+    row: dict[str, object] = {
+        "DataGraficosPix": "2026-10-31",
+        "qtdUsuariosPessoaFisica": 100,
+        "qtdUsuariosPessoaJuridica": 25,
+        "qtdUsuariosCadastradosDICTTotal": 125,
+    }
+    row.update(overrides)
+    return row
+
+
 def chaves_row(**overrides: object) -> dict[str, object]:
     row: dict[str, object] = {
         "Data": "2026-10-31",
