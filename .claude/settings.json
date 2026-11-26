@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(make test)",
+      "Bash(make lint)",
+      "Bash(make dbt-deps)",
+      "Bash(make dbt-build)",
+      "Bash(make dbt-docs)",
+      "Bash(make airflow-test)",
+      "Bash(make metabase-validate)",
+      "Bash(make tf-check)",
+      "Bash(python -m pytest)",
+      "Bash(python -m pytest *)",
+      "Bash(python3 -m pytest)",
+      "Bash(python3 -m pytest *)",
+      "Bash(.venv/bin/python -m pytest)",
+      "Bash(.venv/bin/python -m pytest *)",
+      "Bash(python -m ruff *)",
+      "Bash(python3 -m ruff *)",
+      "Bash(.venv/bin/python -m ruff *)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log)",
+      "Bash(git log *)",
+      "Bash(terraform fmt)",
+      "Bash(terraform fmt *)",
+      "Bash(terraform fmt -check -recursive -diff infra/terraform)",
+      "Bash(terraform -chdir=infra/terraform/bootstrap init -backend=false -input=false)",
+      "Bash(terraform -chdir=infra/terraform/bootstrap validate)",
+      "Bash(terraform -chdir=infra/terraform/envs/dev init -backend=false -input=false)",
+      "Bash(terraform -chdir=infra/terraform/envs/dev validate)"
+    ],
+    "deny": [
+      "Bash(terraform apply)",
+      "Bash(terraform apply *)",
+      "Bash(terraform destroy)",
+      "Bash(terraform destroy *)",
+      "Bash(aws)",
+      "Bash(aws *)",
+      "Bash(git push --force)",
+      "Bash(git push --force *)",
+      "Bash(git push -f)",
+      "Bash(git push -f *)",
+      "Bash(rm -rf)",
+      "Bash(rm -rf *)",
+      "Read(./.env)",
+      "Read(.env)",
+      "Read(**/.env)",
+      "Read(./secrets/**)",
+      "Read(secrets/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/format_changed.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block_unsafe_bash.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

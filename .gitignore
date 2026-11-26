@@ -35,3 +35,7 @@ override.tf.json
 !*.tfvars.example
 backend.hcl
 infra/build/
+
+# Claude Code personal files. Shared instructions stay in CLAUDE.md.
+CLAUDE.local.md
+.claude/settings.local.json

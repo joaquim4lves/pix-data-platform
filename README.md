@@ -130,6 +130,11 @@ Open http://localhost:3000 and sign in as `pix@example.com` / `PixLocal-1a`. The
 | [ADR-005](docs/adr/ADR-005.md) | dbt is the transformation layer |
 | [ADR-006](docs/adr/ADR-006.md) | Airflow in Docker, not MWAA |
 | [ADR-007](docs/adr/ADR-007.md) | Metabase on local DuckDB, definitions in git |
+| [ADR-008](docs/adr/ADR-008.md) | Agentic development setup |
+
+## Built with coding agents
+
+Claude Code can drive this repository. Project memory, skills, hooks, and the feature ledger are described in [docs/agentic/README.md](docs/agentic/README.md). The decision is [ADR-008](docs/adr/ADR-008.md). Personal notes go in `CLAUDE.local.md`, which is gitignored.
 
 ## Cost
 
